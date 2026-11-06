@@ -23,39 +23,58 @@ if ('serviceWorker' in navigator) {
 const $ = (id) => document.getElementById(id);
 const pad4 = (n) => String(n).padStart(4, '0');
 
-// ---- 記録: { v: 1, s: { "0123:45": 星 } } ----
-let stars = {};
-const sums = new Uint16Array(10000);   // 4 桁ごとの星の合計
+// ---- 最小記号数の表（data/min.bin。255 は未計算）。星の計算に使うので先に読む ----
+let minTable = null;
+try {
+  const r = await fetch('./data/min.bin');
+  const b = await r.arrayBuffer();
+  if (b.byteLength === 1000000) minTable = new Uint8Array(b);
+} catch { /* 読めなければ未計算として遊べる */ }
+const minOf = (digits, t) => (minTable ? minTable[Number(digits) * 100 + t - 1] : 255);
+
+// ---- 記録: four-digits.best = { v: 2, s: { "0123": { "45": [k, "式"] } } } ----
+// 遊んだ問題だけを持つ。k は式の記号数、式は !{N} を含む打った形のまま。
+// 星は保存せず、k と最小記号数から出す。
+// 旧版（four-digits.stars）から引き継いだ問題は式がないので [null, null, 星]。
+let best = {};
 {
-  const d = load('stars', null);
-  if (d && d.v === 1 && d.s && typeof d.s === 'object') stars = d.s;
-  for (const [key, val] of Object.entries(stars)) {
-    const m = /^(\d{4}):(\d+)$/.exec(key);
-    if (m && val >= 1 && val <= 3) sums[Number(m[1])] += val;
+  const d = load('best', null);
+  if (d && d.v === 2 && d.s && typeof d.s === 'object') best = d.s;
+  else {
+    const old = load('stars', null);   // { v: 1, s: { "0123:45": 星 } }
+    if (old && old.v === 1 && old.s && typeof old.s === 'object') {
+      for (const [key, val] of Object.entries(old.s)) {
+        const m = /^(\d{4}):(\d+)$/.exec(key);
+        if (m && val >= 1 && val <= 3) (best[m[1]] ||= {})[m[2]] = [null, null, val];
+      }
+      save('best', { v: 2, s: best });
+    }
   }
 }
-const starsOf = (digits, t) => stars[`${digits}:${t}`] || 0;
-function saveStars(digits, t, n) {
-  const key = `${digits}:${t}`;
-  const old = stars[key] || 0;
-  if (n <= old) return old;
-  stars[key] = n;
-  sums[Number(digits)] += n - old;
-  save('stars', { v: 1, s: stars });
-  return n;
+const entryOf = (digits, t) => (best[digits] && best[digits][t]) || null;
+const starsOfEntry = (digits, t, e) => (e[0] == null ? e[2] : starsFor(e[0], minOf(digits, t)));
+const starsOf = (digits, t) => { const e = entryOf(digits, t); return e ? starsOfEntry(digits, t, e) : 0; };
+const sums = new Uint16Array(10000);   // 4 桁ごとの星の合計
+for (const [d, row] of Object.entries(best)) {
+  for (const t of Object.keys(row)) sums[Number(d)] += starsOfEntry(d, Number(t), row[t]);
+}
+// 解いた式を残す。前より記号数が少なければ更新（同じなら前のまま）。返すのは今の星
+function saveBest(digits, t, k, expr) {
+  const old = entryOf(digits, t);
+  const oldStars = old ? starsOfEntry(digits, t, old) : 0;
+  const got = starsFor(k, minOf(digits, t));
+  const better = !old || (old[0] == null ? got >= oldStars : k < old[0]);
+  if (!better) return oldStars;
+  (best[digits] ||= {})[t] = [k, expr];
+  const now = starsFor(k, minOf(digits, t));
+  sums[Number(digits)] += now - oldStars;
+  save('best', { v: 2, s: best });
+  return now;
 }
 const totalStars = () => sums.reduce((a, b) => a + b, 0);
 
-// ---- 最小記号数の表（data/min.bin。255 は未計算） ----
-let minTable = null;
-fetch('./data/min.bin')
-  .then((r) => r.arrayBuffer())
-  .then((b) => { if (b.byteLength === 1000000) minTable = new Uint8Array(b); })
-  .catch(() => { /* 読めなければ未計算として遊べる */ });
-const minOf = (digits, t) => (minTable ? minTable[Number(digits) * 100 + t - 1] : 255);
-
 // ---- 画面の切り替え ----
-const screens = { list: $('s-list'), targets: $('s-targets'), puzzle: $('s-puzzle') };
+const screens = { list: $('s-list'), zukan: $('s-zukan'), targets: $('s-targets'), puzzle: $('s-puzzle') };
 function show(name) {
   for (const [k, el] of Object.entries(screens)) el.hidden = k !== name;
 }
@@ -152,10 +171,12 @@ function showList() {
 // ================= 2. 目標の一覧 =================
 let digits = '0000';
 
-function openTargets(d) {
+let from = 'list';   // 目標の一覧に来た場所（戻り先）
+function openTargets(d, origin = 'list') {
+  from = origin;
   digits = d;
   lastDigits = d;
-  savedTop = scroller.scrollTop;
+  if (origin === 'list') savedTop = scroller.scrollTop;
   show('targets');
   showTargets();
 }
@@ -176,7 +197,7 @@ $('targets').addEventListener('click', (e) => {
   const b = e.target.closest('button[data-t]');
   if (b) openPuzzle(Number(b.dataset.t));
 });
-$('targets-back').addEventListener('click', showList);
+$('targets-back').addEventListener('click', () => (from === 'zukan' ? showZukan() : showList()));
 
 // ================= 3. パズル =================
 const MAXLEN = 60;
@@ -198,7 +219,14 @@ function openPuzzle(t) {
   show('puzzle');
   $('puzzle-target').textContent = t;
   $('nsel').hidden = true;
+  showMine();
   update();
+}
+
+// その問題の自分の一番良い式（最小記号数は出さない）
+function showMine() {
+  const e = entryOf(digits, target);
+  $('mine').textContent = !e ? '' : e[0] == null ? '解いたことがある' : `自分の一番: ${display(e[1])}（記号 ${e[0]} 個）`;
 }
 
 function renderExpr() {
@@ -245,8 +273,9 @@ function finish(k) {
   const m = minOf(digits, target);
   const got = starsFor(k, m);
   const prev = starsOf(digits, target);
-  const best = saveStars(digits, target, got);
+  const bestStars = saveBest(digits, target, k, text());
   $('value').classList.add('hit');
+  showMine();
   $('nsel').hidden = true;
   renderExpr();
   $('r-stars').innerHTML = [0, 1, 2].map((i) => `<span class="${i < got ? 'on' : 'off'}" style="animation-delay:${i * 180}ms">${i < got ? '★' : '☆'}</span>`).join('');
@@ -254,7 +283,7 @@ function finish(k) {
   let sub = '';
   if (m < 255 && k < m) sub = '最小を更新！';
   else if (got < 3) sub = 'もっと短い式がある';
-  if (prev > got) sub += `${sub ? ' ・ ' : ''}この問題の最高は ${'★'.repeat(best)}`;
+  if (prev > got) sub += `${sub ? ' ・ ' : ''}この問題の最高は ${'★'.repeat(bestStars)}`;
   $('r-sub').textContent = sub;
   $('r-sub').classList.toggle('record', m < 255 && k < m);
   const nt = nextOpen();
@@ -330,5 +359,75 @@ $('r-retry').addEventListener('click', () => {
   resetView();
   update();
 });
+
+// ================= 図鑑 =================
+let tab = 'digits', numPick = 0;
+const zbody = $('z-body');
+
+function showZukan() {
+  show('zukan');
+  for (const b of document.querySelectorAll('.tab')) b.classList.toggle('on', b.dataset.tab === tab);
+  if (tab === 'digits') renderDigitsTab(); else if (numPick) renderNumberDetail(); else renderNumbersTab();
+}
+
+function renderDigitsTab() {
+  const ds = Object.keys(best).filter((d) => Object.keys(best[d]).length).sort();
+  let full = 0, cards = '';
+  for (const d of ds) {
+    let cells = '', n3 = 0;
+    for (let t = 1; t <= 100; t++) {
+      const s = starsOf(d, t);
+      if (s === 3) n3++;
+      cells += `<i class="c${s}"></i>`;
+    }
+    const gold = n3 === 100;
+    if (gold) full++;
+    cards += `<button class="card${gold ? ' gold' : ''}" data-n="${d}"><b>${d}</b>${gold ? '<small>制覇</small>' : ''}<span class="map">${cells}</span></button>`;
+  }
+  zbody.innerHTML = `<div class="zsum">遊んだ ${ds.length} 組 ・ 制覇 ${full} 組</div>`
+    + (ds.length ? `<div class="cards">${cards}</div>` : '<div class="zempty">まだ解いた問題がない。解くとここに並ぶ。</div>');
+}
+
+// 数 t を作った 4 桁の一覧（4 桁の昇順）
+function makersOf(t) {
+  const out = [];
+  for (const d of Object.keys(best).sort()) if (best[d][t]) out.push(d);
+  return out;
+}
+
+function renderNumbersTab() {
+  let cells = '';
+  for (let t = 1; t <= 100; t++) {
+    const c = makersOf(t).length;
+    cells += `<button class="num${c ? '' : ' zero'}" data-t="${t}"><b>${t}</b><small>${c}</small></button>`;
+  }
+  zbody.innerHTML = `<div class="zsum">数ごとに、何種類の 4 桁から作ったか</div><div class="nums">${cells}</div>`;
+}
+
+function renderNumberDetail() {
+  let rows = '';
+  for (const d of makersOf(numPick)) {
+    const e = best[d][numPick];
+    const s = starsOfEntry(d, numPick, e);
+    rows += `<button class="mk" data-n="${d}"><b>${d}</b><span>${e[1] ? display(e[1]) : '（式なし）'}</span><small>${'★'.repeat(s)}</small></button>`;
+  }
+  zbody.innerHTML = `<div class="zhead"><button class="back" id="num-back">‹ 数</button><b class="zbig">${numPick}</b></div>`
+    + (rows ? `<div class="mks">${rows}</div>` : '<div class="zempty">まだこの数を作っていない。</div>');
+}
+
+zbody.addEventListener('click', (e) => {
+  if (e.target.closest('#num-back')) { numPick = 0; return showZukan(); }
+  const num = e.target.closest('button.num');
+  if (num) { numPick = Number(num.dataset.t); return showZukan(); }
+  const c = e.target.closest('button[data-n]');
+  if (c) openTargets(c.dataset.n, 'zukan');
+});
+$('tabs').addEventListener('click', (e) => {
+  const b = e.target.closest('.tab');
+  if (!b) return;
+  tab = b.dataset.tab; numPick = 0; showZukan();
+});
+$('zukan-btn').addEventListener('click', showZukan);
+$('zukan-back').addEventListener('click', showList);
 
 showList();
