@@ -96,7 +96,6 @@ button { font: inherit; color: inherit; }
 /* パズル: 上に 4 つの数字 → 式 → 値、入力（.pad）は下に寄せる */
 .board__digits { text-align: center; font-size: 48px; font-weight: 700; letter-spacing: 0.25em; padding-left: 0.25em; font-variant-numeric: tabular-nums; line-height: 1.1; margin: 4px 0; }
 .board__digits i { font-style: normal; }
-.board__digits i.next { color: var(--accent); }
 .pad { margin-top: auto; display: flex; flex-direction: column; gap: 8px; padding-top: 8px; }
 .head__target b { font-size: 28px; color: var(--accent); }
 
@@ -115,9 +114,13 @@ button { font: inherit; color: inherit; }
 .expr {
   min-height: 64px; padding: 10px 12px; border: 1px solid var(--line); background: var(--panel); border-radius: 10px;
   font-size: 24px; line-height: 1.35; word-break: break-all; font-variant-numeric: tabular-nums;
-  display: flex; align-items: flex-end; justify-content: flex-end; text-align: right; user-select: text;
+  display: flex; align-items: flex-end; justify-content: flex-end; text-align: right; cursor: text;
 }
-.expr:empty::before { content: '式を打つ'; color: var(--muted); font-size: 16px; }
+.expr__in { max-width: 100%; }
+/* カーソル（タップや ◀ ▶ で動かす） */
+.caret { display: inline-block; width: 2px; height: 1.1em; margin: 0 1px; vertical-align: -0.15em; background: var(--accent); animation: blink 1s steps(1) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .caret { animation: none; } }
 .info { display: flex; justify-content: space-between; gap: 10px; font-size: 14px; min-height: 44px; align-items: baseline; }
 .info__value { flex: 1; color: var(--fg); word-break: break-all; font-size: 28px; font-weight: 700; font-variant-numeric: tabular-nums; }
 .info__value.dim, .info__value.warn { font-size: 15px; font-weight: 400; }
@@ -135,6 +138,7 @@ button { font: inherit; color: inherit; }
 .key--next b { color: var(--accent); font-size: 24px; margin-left: 4px; }
 .key--fn { font-size: 16px; background: #3a2530; }
 .key--wide { grid-column: span 2; }
+.key--mv { font-size: 18px; background: #2a3550; }
 .key--ok { background: #2a6b6a; font-size: 18px; }
 .nsel { display: grid; grid-template-columns: 56px 1fr 56px; gap: 8px; align-items: center; }
 .nsel span { grid-column: 1 / -1; font-size: 13px; color: var(--muted); }

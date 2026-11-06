@@ -180,11 +180,17 @@ $('targets-back').addEventListener('click', showList);
 
 // ================= 3. パズル =================
 const MAXLEN = 60;
-let target = 1, text = '', solved = false;
+// 式は「かたまり」の並び（1 文字か !{N}）とカーソル位置で持つ。text は並びをつないだもの
+let target = 1, toks = [], cur = 0, solved = false;
+const text = () => toks.join('');
+const isDigit = (t) => /^\d$/.test(t);
+// 数字は最初から並べておき、プレイヤーは記号だけを差し込む（数字は消せないので順番は崩れない）
+const canDelete = () => cur > 0 && !isDigit(toks[cur - 1]);
+const startToks = () => [...digits];
 
 function openPuzzle(t) {
   target = t;
-  text = '';
+  toks = startToks(); cur = 1;   // 1 つ目と 2 つ目の数字の間から始める
   solved = false;
   show('puzzle');
   $('puzzle-target').textContent = t;
@@ -192,18 +198,22 @@ function openPuzzle(t) {
   update();
 }
 
+function renderExpr() {
+  const el = $('expr');
+  const parts = toks.map((t, i) => `<span data-i="${i}">${display(t)}</span>`);
+  parts.splice(cur, 0, '<span class="caret" aria-hidden="true"></span>');
+  el.innerHTML = `<span class="expr__in">${parts.join('')}</span>`;
+}
+
 function update() {
-  const used = digitsOf(text).length;
-  $('puzzle-digits').innerHTML = [...digits]
-    .map((c, i) => `<i class="${i === used ? 'next' : ''}">${c}</i>`).join('');
-  [...$('puzzle-digits').children].forEach((el, i) => { el.style.opacity = i < used ? '0.35' : '1'; });
+  $('puzzle-digits').innerHTML = [...digits].map((c) => `<i>${c}</i>`).join('');
 
-  $('expr').textContent = display(text);
-  const key = $('key-next');
-  key.disabled = used >= 4 || solved;
-  key.innerHTML = used >= 4 ? '数字は使い切った' : `次の数字<b>${digits[used]}</b>`;
+  renderExpr();
+  $('key-back').disabled = solved || !canDelete();
+  $('key-left').disabled = cur === 0 || solved;
+  $('key-right').disabled = cur === toks.length || solved;
 
-  const a = analyze(text, digits);
+  const a = analyze(text(), digits);
   const val = $('value');
   val.className = 'info__value';
   if (a.status === 'empty') { val.textContent = ''; }
@@ -226,10 +236,10 @@ function finish(k) {
   $('nsel').hidden = true;
   $('result').hidden = false;
   $('r-stars').textContent = '★'.repeat(got) + '☆'.repeat(3 - got);
-  $('r-text').textContent = `${display(text)} = ${target}`;
+  $('r-text').textContent = `${display(text())} = ${target}`;
   $('r-sub').textContent = `記号 ${k} 個 ・ ${m >= 255 ? '最小は未計算' : `最小は ${m} 個`} ・ この問題の最高 ${'★'.repeat(best)}`;
   $('r-next').hidden = target >= 100;
-  $('key-next').disabled = true;
+  renderExpr();
 }
 
 function resetView() {
@@ -237,9 +247,11 @@ function resetView() {
   $('result').hidden = true;
 }
 
-function press(ch) {
-  if (solved || text.length >= MAXLEN) return;
-  text += ch;
+// カーソルの位置に 1 かたまり入れる
+function press(tok) {
+  if (solved || text().length + tok.length > MAXLEN) return;
+  toks.splice(cur, 0, tok);
+  cur++;
   update();
 }
 
@@ -248,20 +260,30 @@ $('keys').addEventListener('click', (e) => {
   if (!b || solved) return;
   if (b.dataset.ch) return press(b.dataset.ch);
   const k = b.dataset.key;
-  if (k === 'next') {
-    const used = digitsOf(text).length;
-    if (used < 4) press(digits[used]);
-  } else if (k === 'back') {
-    // !{N} は 1 つのまとまりとして消す
-    text = text.replace(/!\{\d+\}$/, '').length < text.length ? text.replace(/!\{\d+\}$/, '') : text.slice(0, -1);
-    update();
+  if (k === 'back') {
+    if (canDelete()) { toks.splice(cur - 1, 1); cur--; update(); }
+  } else if (k === 'left') {
+    if (cur > 0) { cur--; update(); }
+  } else if (k === 'right') {
+    if (cur < toks.length) { cur++; update(); }
   } else if (k === 'clear') {
-    text = '';
+    toks = startToks(); cur = 1;
     update();
   } else if (k === 'factn') {
     $('keys').hidden = true;
     $('nsel').hidden = false;
   }
+});
+
+// 式をタップした場所にカーソルを置く（かたまりの左半分なら前、右半分なら後ろ）
+$('expr').addEventListener('click', (e) => {
+  if (solved) return;
+  const sp = e.target.closest('span[data-i]');
+  if (!sp) { cur = toks.length; update(); return; }
+  const r = sp.getBoundingClientRect();
+  const i = Number(sp.dataset.i);
+  cur = e.clientX < r.left + r.width / 2 ? i : i + 1;
+  update();
 });
 
 const nInput = $('n-input');
