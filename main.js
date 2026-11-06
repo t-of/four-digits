@@ -1,9 +1,10 @@
-import { analyze, isTarget, starsFor, formatValue, display, digitsOf } from './src/expr.js';
+import { analyze, isTarget, starsFor, formatValue, display } from './src/expr.js';
+import { sfx, setSound, unlockOnFirstTouch } from './src/sfx.js';
 
-// localStorage はほかのアプリと共有される（同じ t-of.github.io のため）。
-// キーは必ず 'four-digits.' で始める。
+// =====================================================================
+// 保存（localStorage はほかのアプリと共有。キーは必ず 'four-digits.' で始める）
+// =====================================================================
 const STORE = 'four-digits.';
-
 function load(key, fallback) {
   try {
     const v = localStorage.getItem(STORE + key);
@@ -14,30 +15,44 @@ function save(key, value) {
   try { localStorage.setItem(STORE + key, JSON.stringify(value)); } catch { /* 保存できなくても遊べる */ }
 }
 
-WebAppKit.init({ title: 'four-digits', text: '4つの数字を順番どおりに使い、目標の数を作る数字パズル。' });
-
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js');
-}
+WebAppKit.init({ title: 'OCCAM', text: '4つの数字を、いちばん短い式で。1〜100を作るテンパズル。' });
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');
 
 const $ = (id) => document.getElementById(id);
 const pad4 = (n) => String(n).padStart(4, '0');
+const starStr = (s) => '★'.repeat(s) + '☆'.repeat(3 - s);
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const buzz = (ms = 6) => { try { navigator.vibrate?.(ms); } catch { /* なし */ } };
 
-// ---- 問題の表（data/puzzle.bin。1 問 1 バイト、添え字 = 4 桁×100 + 目標−1）。星の計算に使うので先に読む ----
-// 下 5 ビット = 最小記号数（255 は未計算）、上 3 ビット = 難しさ 1〜5
+// ---- 設定: four-digits.settings = { v: 1, sound: true } ----
+const settings = (() => {
+  const d = load('settings', null);
+  return d && d.v === 1 ? { sound: d.sound !== false } : { sound: true };
+})();
+setSound(settings.sound);
+unlockOnFirstTouch();
+
+// =====================================================================
+// 問題の表（data/puzzle.bin。1 問 1 バイト、添え字 = 4 桁×100 + 目標−1）
+// 下 5 ビット = 最小記号数（31 は未計算）、上 3 ビット = 難しさ 1〜5
+// 1MB あるので、画面を先に出してから読む
+// =====================================================================
 let minTable = null;
-try {
-  const r = await fetch('./data/puzzle.bin');
-  const b = await r.arrayBuffer();
-  if (b.byteLength === 1000000) minTable = new Uint8Array(b);
-} catch { /* 読めなければ未計算として遊べる（おまかせ・今日の 1 問は難しさの区別なし） */ }
+const tableReady = (async () => {
+  try {
+    const r = await fetch('./data/puzzle.bin');
+    const b = await r.arrayBuffer();
+    if (b.byteLength === 1000000) minTable = new Uint8Array(b);
+  } catch { /* 読めなければ未計算として遊べる */ }
+})();
 const minOf = (digits, t) => (minTable ? minTable[Number(digits) * 100 + t - 1] & 31 : 255);
 const lvOf = (n, t) => (minTable ? minTable[n * 100 + t - 1] >> 5 : 0);
 
-// ---- 記録: four-digits.best = { v: 2, s: { "0123": { "45": [k, "式"] } } } ----
-// 遊んだ問題だけを持つ。k は式の記号数、式は !{N} を含む打った形のまま。
-// 星は保存せず、k と最小記号数から出す。
-// 旧版（four-digits.stars）から引き継いだ問題は式がないので [null, null, 星]。
+// =====================================================================
+// 記録: four-digits.best = { v: 2, s: { "0123": { "45": [k, "式"] } } }
+// k は式の記号数、式は !{N} を含む打った形のまま。星は k と最小記号数から出す。
+// 旧版（four-digits.stars）から引き継いだ問題は [null, null, 星]。
+// =====================================================================
 let best = {};
 {
   const d = load('best', null);
@@ -56,10 +71,13 @@ let best = {};
 const entryOf = (digits, t) => (best[digits] && best[digits][t]) || null;
 const starsOfEntry = (digits, t, e) => (e[0] == null ? e[2] : starsFor(e[0], minOf(digits, t)));
 const starsOf = (digits, t) => { const e = entryOf(digits, t); return e ? starsOfEntry(digits, t, e) : 0; };
-const sums = new Uint16Array(10000);   // 4 桁ごとの星の合計
-for (const [d, row] of Object.entries(best)) {
-  for (const t of Object.keys(row)) sums[Number(d)] += starsOfEntry(d, Number(t), row[t]);
-}
+const starSum = (digits) => {
+  const row = best[digits];
+  if (!row) return 0;
+  let s = 0;
+  for (const t of Object.keys(row)) s += starsOfEntry(digits, Number(t), row[t]);
+  return s;
+};
 // 解いた式を残す。前より記号数が少なければ更新（同じなら前のまま）。返すのは今の星
 function saveBest(digits, t, k, expr) {
   const old = entryOf(digits, t);
@@ -68,391 +86,29 @@ function saveBest(digits, t, k, expr) {
   const better = !old || (old[0] == null ? got >= oldStars : k < old[0]);
   if (!better) return oldStars;
   (best[digits] ||= {})[t] = [k, expr];
-  const now = starsFor(k, minOf(digits, t));
-  sums[Number(digits)] += now - oldStars;
   save('best', { v: 2, s: best });
-  return now;
+  return got;
 }
-const totalStars = () => sums.reduce((a, b) => a + b, 0);
-
-// ---- 画面の切り替え ----
-const screens = { home: $('s-home'), list: $('s-list'), zukan: $('s-zukan'), targets: $('s-targets'), puzzle: $('s-puzzle') };
-function show(name) {
-  for (const [k, el] of Object.entries(screens)) el.hidden = k !== name;
-}
-
-// ================= 1. 4 桁の一覧（見えている行だけ作る） =================
-const ROW = 54, GAP = 6, MINW = 62;
-const scroller = $('list-scroll'), spacer = $('list-spacer'), rowsEl = $('list-rows');
-let cols = 5, rowsTotal = 2000, drawn = '', marked = -1, savedTop = 0, lastDigits = null;
-
-function level(n) {
-  const s = sums[n];
-  return s === 0 ? 0 : Math.min(5, Math.ceil(s / 60));
-}
-
-function layout() {
-  const w = scroller.clientWidth;
-  if (!w) return;
-  const c = Math.max(3, Math.min(10, Math.floor((w + GAP) / (MINW + GAP))));
-  if (c !== cols) {
-    const first = Math.floor(scroller.scrollTop / ROW) * cols;
-    cols = c;
-    scroller.scrollTop = Math.floor(first / cols) * ROW;
-  }
-  rowsTotal = Math.ceil(10000 / cols);
-  spacer.style.height = `${rowsTotal * ROW}px`;
-  drawn = '';
-  render();
-}
-
-function render() {
-  const vh = scroller.clientHeight;
-  if (!vh) return;
-  const top = scroller.scrollTop;
-  const first = Math.max(0, Math.floor(top / ROW) - 3);
-  const last = Math.min(rowsTotal - 1, Math.ceil((top + vh) / ROW) + 3);
-  const sig = `${first}-${last}-${cols}-${marked}`;
-  if (sig === drawn) return;
-  drawn = sig;
-  rowsEl.style.transform = `translateY(${first * ROW}px)`;
-  let html = '';
-  for (let r = first; r <= last; r++) {
-    html += `<div class="list__row" style="grid-template-columns:repeat(${cols},1fr)">`;
-    for (let c = 0; c < cols; c++) {
-      const n = r * cols + c;
-      if (n >= 10000) break;
-      const lv = level(n);
-      html += `<button class="n${lv ? ` lv${lv}` : ''}${n === marked ? ' mark' : ''}" data-n="${n}">${pad4(n)}</button>`;
+function totals() {
+  let solved = 0, three = 0, stars = 0, full = 0, played = 0;
+  for (const d of Object.keys(best)) {
+    const ts = Object.keys(best[d]);
+    if (!ts.length) continue;
+    played++;
+    let n3 = 0;
+    for (const t of ts) {
+      const s = starsOfEntry(d, Number(t), best[d][t]);
+      solved++; stars += s;
+      if (s === 3) { three++; n3++; }
     }
-    html += '</div>';
+    if (n3 === 100) full++;
   }
-  rowsEl.innerHTML = html;
+  return { solved, three, stars, full, played };
 }
 
-function scrollToNumber(n) {
-  const row = Math.floor(n / cols);
-  scroller.scrollTop = Math.max(0, row * ROW - (scroller.clientHeight - ROW) / 2);
-  render();
-}
-
-let raf = 0;
-scroller.addEventListener('scroll', () => {
-  if (raf) return;
-  raf = requestAnimationFrame(() => { raf = 0; render(); });
-}, { passive: true });
-new ResizeObserver(layout).observe(scroller);
-
-scroller.addEventListener('click', (e) => {
-  const b = e.target.closest('button[data-n]');
-  if (b) openTargets(pad4(b.dataset.n));
-});
-
-const jump = $('jump');
-jump.addEventListener('input', () => {
-  const v = jump.value.replace(/\D/g, '').slice(0, 4);
-  if (v !== jump.value) jump.value = v;
-  if (!v) { marked = -1; render(); return; }
-  const n = Number(v.padEnd(4, '0'));   // 途中までなら、その続きの先頭へ
-  marked = v.length === 4 ? n : -1;
-  drawn = '';
-  scrollToNumber(n);
-});
-jump.addEventListener('keydown', (e) => { if (e.key === 'Enter') jump.blur(); });
-
-function showList() {
-  show('list');
-  $('list-sum').textContent = `★ ${totalStars()} / 30000`;
-  if (lastDigits !== null) marked = Number(lastDigits);
-  drawn = '';
-  layout();
-  scroller.scrollTop = savedTop;
-  render();
-}
-
-// ================= 2. 目標の一覧 =================
-let digits = '0000';
-let mode = 'free';   // 'free' | 'auto' | 'daily'
-
-let from = 'list';   // 目標の一覧に来た場所（戻り先）
-function openTargets(d, origin = 'list') {
-  from = origin;
-  digits = d;
-  lastDigits = d;
-  if (origin === 'list') savedTop = scroller.scrollTop;
-  show('targets');
-  showTargets();
-}
-
-function showTargets() {
-  show('targets');
-  $('targets-digits').textContent = digits;
-  $('targets-sum').textContent = `★ ${sums[Number(digits)]} / 300`;
-  let html = '';
-  for (let t = 1; t <= 100; t++) {
-    const s = starsOf(digits, t);
-    html += `<button class="t${s ? ` st${s}` : ''}" data-t="${t}"><b>${t}</b><small>${'★'.repeat(s)}${'☆'.repeat(3 - s)}</small></button>`;
-  }
-  $('targets').innerHTML = html;
-}
-
-$('targets').addEventListener('click', (e) => {
-  const b = e.target.closest('button[data-t]');
-  if (b) openPuzzle(Number(b.dataset.t));
-});
-$('targets-back').addEventListener('click', () => (from === 'zukan' ? showZukan() : showList()));
-
-// ================= 3. パズル =================
-const MAXLEN = 60;
-// 式は「かたまり」の並び（1 文字か !{N}）とカーソル位置で持つ。text は並びをつないだもの
-let target = 1, toks = [], cur = 0, solved = false;
-let locked = null;   // 「もっと短く」で戻ったときの式。同じ式のままでは解けた扱いにしない
-let pauseTimer = 0;
-const text = () => toks.join('');
-const isDigit = (t) => /^\d$/.test(t);
-// 数字は最初から並べておき、プレイヤーは記号だけを差し込む（数字は消せないので順番は崩れない）
-const canDelete = () => cur > 0 && !isDigit(toks[cur - 1]);
-const startToks = () => [...digits];
-
-function openPuzzle(t, md = 'free') {
-  mode = md;
-  target = t;
-  toks = startToks(); cur = 1;   // 1 つ目と 2 つ目の数字の間から始める
-  solved = false; locked = null; clearTimeout(pauseTimer);
-  resetView();
-  show('puzzle');
-  $('puzzle-target').textContent = t;
-  $('puzzle-tag').textContent = md === 'daily' ? '今日の 1 問' : md === 'auto' ? `Lv ${auto.L}` : '';
-  $('puzzle-back').textContent = md === 'free' ? '‹ 目標' : '‹ ホーム';
-  $('giveup').hidden = md !== 'auto';
-  $('nsel').hidden = true;
-  showMine();
-  update();
-}
-
-// その問題の自分の一番良い式（最小記号数は出さない）
-function showMine() {
-  const e = entryOf(digits, target);
-  $('mine').textContent = !e ? '' : e[0] == null ? '解いたことがある' : `自分の一番: ${display(e[1])}（記号 ${e[0]} 個）`;
-}
-
-function renderExpr() {
-  const el = $('expr');
-  const parts = toks.map((t, i) => `<span data-i="${i}">${display(t)}</span>`);
-  parts.splice(cur, 0, '<span class="caret" aria-hidden="true"></span>');
-  el.innerHTML = `<span class="expr__in">${parts.join('')}</span>`;
-}
-
-function update() {
-  $('puzzle-digits').innerHTML = [...digits].map((c) => `<i>${c}</i>`).join('');
-
-  renderExpr();
-  $('key-back').disabled = solved || !canDelete();
-  $('key-left').disabled = cur === 0 || solved;
-  $('key-right').disabled = cur === toks.length || solved;
-
-  const a = analyze(text(), digits);
-  const val = $('value');
-  val.className = 'info__value';
-  if (a.status === 'empty') { val.textContent = ''; }
-  else if (a.status === 'incomplete') { val.textContent = '未完成'; val.classList.add('dim'); }
-  else if (a.status === 'ok') {
-    val.textContent = `${formatValue(a.value)}${a.complete ? '' : '（数字がまだ残っている）'}`;
-    if (!a.complete) val.classList.add('dim');
-  } else { val.textContent = a.message; val.classList.add('warn'); }
-  $('count').textContent = `記号 ${a.symbols} 個`;
-
-  if (!solved && text() !== locked && a.status === 'ok' && a.complete && isTarget(a.value, target)) finish(a.symbols);
-}
-
-// その 4 桁で、今の目標の後ろから回って最初の ★3 でない目標（無ければ 0）
-function nextOpen() {
-  for (let i = 1; i < 100; i++) {
-    const t = ((target - 1 + i) % 100) + 1;
-    if (starsOf(digits, t) < 3) return t;
-  }
-  return 0;
-}
-
-// 解けたら: 式を残して値を光らせ、少し間を置いてから星と結果を出す
-function finish(k) {
-  solved = true;
-  const m = minOf(digits, target);
-  const got = starsFor(k, m);
-  const prev = starsOf(digits, target);
-  const bestStars = saveBest(digits, target, k, text());
-  $('value').classList.add('hit');
-  showMine();
-  $('nsel').hidden = true;
-  renderExpr();
-  $('r-stars').innerHTML = [0, 1, 2].map((i) => `<span class="${i < got ? 'on' : 'off'}" style="animation-delay:${i * 180}ms">${i < got ? '★' : '☆'}</span>`).join('');
-  $('r-text').textContent = `記号 ${k} 個`;
-  let sub = '';
-  if (m < 255 && k < m) sub = '最小を更新！';
-  else if (got < 3) sub = 'もっと短い式がある';
-  if (prev > got) sub += `${sub ? ' ・ ' : ''}この問題の最高は ${'★'.repeat(bestStars)}`;
-  $('r-sub').textContent = sub;
-  $('r-sub').classList.toggle('record', m < 255 && k < m);
-  if (mode === 'auto') {
-    autoSolved(got);
-    $('r-next').textContent = '次の 1 問';
-  } else if (mode === 'daily') {
-    if (bestStars > (daily[dailyDate] || 0)) { daily[dailyDate] = bestStars; save('daily', daily); }
-    $('r-next').textContent = 'ホームへ';
-  } else {
-    const nt = nextOpen();
-    $('r-next').textContent = nt ? '次へ' : '制覇！ 目標の一覧へ';
-    $('r-next').dataset.t = nt;
-  }
-  $('giveup').hidden = true;
-  $('r-retry').hidden = got >= 3;
-  pauseTimer = setTimeout(() => { $('keys').hidden = true; $('result').hidden = false; }, 800);
-}
-
-function resetView() {
-  clearTimeout(pauseTimer);
-  $('keys').hidden = false;
-  $('result').hidden = true;
-}
-
-// カーソルの位置に 1 かたまり入れる
-function press(tok) {
-  if (solved || text().length + tok.length > MAXLEN) return;
-  toks.splice(cur, 0, tok);
-  cur++;
-  update();
-}
-
-$('keys').addEventListener('click', (e) => {
-  const b = e.target.closest('button');
-  if (!b || solved) return;
-  if (b.dataset.ch) return press(b.dataset.ch);
-  const k = b.dataset.key;
-  if (k === 'back') {
-    if (canDelete()) { toks.splice(cur - 1, 1); cur--; update(); }
-  } else if (k === 'left') {
-    if (cur > 0) { cur--; update(); }
-  } else if (k === 'right') {
-    if (cur < toks.length) { cur++; update(); }
-  } else if (k === 'clear') {
-    toks = startToks(); cur = 1;
-    update();
-  } else if (k === 'factn') {
-    $('keys').hidden = true;
-    $('nsel').hidden = false;
-  }
-});
-
-// 式をタップした場所にカーソルを置く（かたまりの左半分なら前、右半分なら後ろ）
-$('expr').addEventListener('click', (e) => {
-  if (solved) return;
-  const sp = e.target.closest('span[data-i]');
-  if (!sp) { cur = toks.length; update(); return; }
-  const r = sp.getBoundingClientRect();
-  const i = Number(sp.dataset.i);
-  cur = e.clientX < r.left + r.width / 2 ? i : i + 1;
-  update();
-});
-
-const nInput = $('n-input');
-const getN = () => Math.max(1, Math.min(999, parseInt(nInput.value, 10) || 1));
-nInput.addEventListener('input', () => { nInput.value = nInput.value.replace(/\D/g, '').slice(0, 3); });
-$('n-minus').addEventListener('click', () => { nInput.value = Math.max(1, getN() - 1); });
-$('n-plus').addEventListener('click', () => { nInput.value = Math.min(999, getN() + 1); });
-function closeN() { $('nsel').hidden = true; $('keys').hidden = false; }
-$('n-cancel').addEventListener('click', closeN);
-$('n-ok').addEventListener('click', () => { const n = getN(); closeN(); press(`!{${n}}`); });
-
-$('puzzle-back').addEventListener('click', () => { resetView(); if (mode === 'free') showTargets(); else showHome(); });
-$('giveup').addEventListener('click', () => { autoGiveUp(); openAuto(); });
-$('r-next').addEventListener('click', () => {
-  if (mode === 'auto') return openAuto();
-  if (mode === 'daily') { resetView(); return showHome(); }
-  const nt = Number($('r-next').dataset.t);
-  resetView();
-  if (nt) openPuzzle(nt); else showTargets();
-});
-// もっと短く: 今の式のまま入力に戻る
-$('r-retry').addEventListener('click', () => {
-  locked = text(); solved = false;
-  resetView();
-  update();
-});
-
-// ================= 図鑑 =================
-let tab = 'digits', numPick = 0;
-const zbody = $('z-body');
-
-function showZukan() {
-  show('zukan');
-  for (const b of document.querySelectorAll('.tab')) b.classList.toggle('on', b.dataset.tab === tab);
-  if (tab === 'digits') renderDigitsTab(); else if (numPick) renderNumberDetail(); else renderNumbersTab();
-}
-
-function renderDigitsTab() {
-  const ds = Object.keys(best).filter((d) => Object.keys(best[d]).length).sort();
-  let full = 0, cards = '';
-  for (const d of ds) {
-    let cells = '', n3 = 0;
-    for (let t = 1; t <= 100; t++) {
-      const s = starsOf(d, t);
-      if (s === 3) n3++;
-      cells += `<i class="c${s}"></i>`;
-    }
-    const gold = n3 === 100;
-    if (gold) full++;
-    cards += `<button class="card${gold ? ' gold' : ''}" data-n="${d}"><b>${d}</b>${gold ? '<small>制覇</small>' : ''}<span class="map">${cells}</span></button>`;
-  }
-  zbody.innerHTML = `<div class="zsum">遊んだ ${ds.length} 組 ・ 制覇 ${full} 組</div>`
-    + (ds.length ? `<div class="cards">${cards}</div>` : '<div class="zempty">まだ解いた問題がない。解くとここに並ぶ。</div>');
-}
-
-// 数 t を作った 4 桁の一覧（4 桁の昇順）
-function makersOf(t) {
-  const out = [];
-  for (const d of Object.keys(best).sort()) if (best[d][t]) out.push(d);
-  return out;
-}
-
-function renderNumbersTab() {
-  let cells = '';
-  for (let t = 1; t <= 100; t++) {
-    const c = makersOf(t).length;
-    cells += `<button class="num${c ? '' : ' zero'}" data-t="${t}"><b>${t}</b><small>${c}</small></button>`;
-  }
-  zbody.innerHTML = `<div class="zsum">数ごとに、何種類の 4 桁から作ったか</div><div class="nums">${cells}</div>`;
-}
-
-function renderNumberDetail() {
-  let rows = '';
-  for (const d of makersOf(numPick)) {
-    const e = best[d][numPick];
-    const s = starsOfEntry(d, numPick, e);
-    rows += `<button class="mk" data-n="${d}"><b>${d}</b><span>${e[1] ? display(e[1]) : '（式なし）'}</span><small>${'★'.repeat(s)}</small></button>`;
-  }
-  zbody.innerHTML = `<div class="zhead"><button class="back" id="num-back">‹ 数</button><b class="zbig">${numPick}</b></div>`
-    + (rows ? `<div class="mks">${rows}</div>` : '<div class="zempty">まだこの数を作っていない。</div>');
-}
-
-zbody.addEventListener('click', (e) => {
-  if (e.target.closest('#num-back')) { numPick = 0; return showZukan(); }
-  const num = e.target.closest('button.num');
-  if (num) { numPick = Number(num.dataset.t); return showZukan(); }
-  const c = e.target.closest('button[data-n]');
-  if (c) openTargets(c.dataset.n, 'zukan');
-});
-$('tabs').addEventListener('click', (e) => {
-  const b = e.target.closest('.tab');
-  if (!b) return;
-  tab = b.dataset.tab; numPick = 0; showZukan();
-});
-$('zukan-btn').addEventListener('click', showZukan);
-$('zukan-back').addEventListener('click', () => showHome());
-$('list-back').addEventListener('click', () => showHome());
-$('free-btn').addEventListener('click', showList);
-
-// ================= ホーム・おまかせ・今日の 1 問 =================
-// four-digits.auto = { v: 1, L: 難しさ, streak: ★3 の連続, recent: [[4桁, 目標], …新しい順に最大 30], cur: [4桁, 目標] | null }
+// =====================================================================
+// おまかせ: four-digits.auto = { v: 1, L, streak, recent: [[4桁, 目標], …], cur: [4桁, 目標] | null }
+// =====================================================================
 const RECENT_DIGITS = 30, RECENT_TARGET = 5;
 let auto = { L: 1, streak: 0, recent: [], cur: null };
 {
@@ -462,12 +118,54 @@ let auto = { L: 1, streak: 0, recent: [], cur: null };
   }
 }
 const saveAuto = () => save('auto', { v: 1, ...auto });
-// four-digits.daily = { "2026-11-06": 星, … }（解いた日だけ。その日の最高）
-const daily = (() => { const d = load('daily', {}); return d && typeof d === 'object' && !Array.isArray(d) ? d : {}; })();
 
+function pickAuto() {
+  const rd = auto.recent.slice(0, RECENT_DIGITS).map((r) => r[0]);
+  const rt = auto.recent.slice(0, RECENT_TARGET).map((r) => r[1]);
+  for (let tries = 0; tries < 5000; tries++) {
+    const i = Math.floor(Math.random() * 1000000);
+    const n = Math.floor(i / 100), t = (i % 100) + 1;
+    if (minTable && lvOf(n, t) !== auto.L) continue;
+    if (rd.includes(n) || rt.includes(t) || starsOf(pad4(n), t) >= 3) continue;
+    return [n, t];
+  }
+  return [Math.floor(Math.random() * 10000), 1 + Math.floor(Math.random() * 100)];
+}
+function ensureAuto() {
+  if (!auto.cur) { auto.cur = pickAuto(); saveAuto(); }
+  return auto.cur;
+}
+function autoPush() {
+  auto.recent.unshift(auto.cur);
+  auto.recent.length = Math.min(auto.recent.length, RECENT_DIGITS);
+  auto.cur = null;
+}
+// 解けた: ★3 が 2 問続けば L+1、★1 なら L−1、★2 はそのまま（連続は切れる）。返すのは Lv の上下
+function autoSolved(got) {
+  if (!auto.cur) return 0;   // 「もっと短く」の 2 回目以降は数えない
+  const before = auto.L;
+  if (got >= 3) {
+    auto.streak++;
+    if (auto.streak >= 2) { auto.L = Math.min(5, auto.L + 1); auto.streak = 0; }
+  } else {
+    auto.streak = 0;
+    if (got <= 1) auto.L = Math.max(1, auto.L - 1);
+  }
+  autoPush(); saveAuto();
+  return auto.L - before;
+}
+function autoGiveUp() {
+  auto.L = Math.max(1, auto.L - 1); auto.streak = 0;
+  autoPush(); saveAuto();
+}
+
+// =====================================================================
+// 今日の 1 問: four-digits.daily = { "2026-11-06": 星, … }（解いた日だけ。その日の最高）
+// =====================================================================
+const daily = (() => { const d = load('daily', {}); return d && typeof d === 'object' && !Array.isArray(d) ? d : {}; })();
 const two = (n) => String(n).padStart(2, '0');
 const dateKey = (d) => `${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())}`;
-let dailyDate = dateKey(new Date());   // 今開いている「今日の 1 問」の日付
+let dailyDate = dateKey(new Date());
 
 // 日付の文字列から決まった乱数列を作る（全端末で同じ結果。FNV-1a → mulberry32）
 function seeded(str) {
@@ -482,7 +180,7 @@ function seeded(str) {
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
 }
-// 難しさ 3 か 4 の問題を、条件に合うまで引く。[4桁の数, 目標]
+// 難しさ 3 か 4 の問題を引く。[4桁の数, 目標]
 function dailyPuzzle(key) {
   const rnd = seeded(`four-digits:${key}`);
   for (;;) {
@@ -493,8 +191,6 @@ function dailyPuzzle(key) {
     if (lv === 3 || lv === 4) return [n, t];
   }
 }
-
-// 続けて解いた日数。今日まだなら昨日までの連続を数える
 function dailyStreak() {
   const d = new Date();
   if (!daily[dateKey(d)]) d.setDate(d.getDate() - 1);
@@ -502,67 +198,627 @@ function dailyStreak() {
   while (daily[dateKey(d)] > 0) { n++; d.setDate(d.getDate() - 1); }
   return n;
 }
+function untilTomorrow() {
+  const now = new Date();
+  const next = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+  const s = Math.max(0, Math.floor((next - now) / 1000));
+  return `${two(Math.floor(s / 3600))}:${two(Math.floor(s / 60) % 60)}:${two(s % 60)}`;
+}
 
-function showHome() {
-  show('home');
-  $('auto-lv').innerHTML = [1, 2, 3, 4, 5].map((i) => `<i class="${i <= auto.L ? 'on' : ''}"></i>`).join('') + `<em>Lv ${auto.L}</em>`;
+// =====================================================================
+// 画面の切り替え
+// =====================================================================
+const screens = { home: $('s-home'), puzzle: $('s-puzzle'), free: $('s-free'), board: $('s-board'), zukan: $('s-zukan') };
+let current = 'home';
+function show(name) {
+  for (const [k, el] of Object.entries(screens)) el.hidden = k !== name;
+  const el = screens[name];
+  if (current !== name && !reduceMotion) {
+    el.classList.remove('enter');
+    void el.offsetWidth;
+    el.classList.add('enter');
+  }
+  current = name;
+  if (name === 'home') startClock(); else stopClock();
+}
+
+let toastTimer = 0;
+function toast(msg) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.hidden = true; }, 1800);
+}
+
+// =====================================================================
+// ホーム
+// =====================================================================
+let clock = 0;
+function startClock() { stopClock(); clock = setInterval(renderDailyCard, 1000); }
+function stopClock() { clearInterval(clock); clock = 0; }
+
+function renderDailyCard() {
   dailyDate = dateKey(new Date());
   const [, mo, da] = dailyDate.split('-');
   $('daily-date').textContent = `${Number(mo)}月${Number(da)}日`;
   const s = daily[dailyDate] || 0;
-  $('daily-st').textContent = s ? `${'★'.repeat(s)}${'☆'.repeat(3 - s)}` : '☆☆☆';
-  $('daily-st').classList.toggle('done', s > 0);
-  const st = dailyStreak();
-  $('daily-streak').textContent = st ? `${st} 日連続` : '';
+  const st = $('daily-st');
+  st.textContent = starStr(s);
+  st.classList.toggle('done', s > 0);
+  const streak = dailyStreak();
+  const parts = [];
+  if (streak) parts.push(`${streak} 日連続`);
+  parts.push(s ? `次の問題まで ${untilTomorrow()}` : 'みんなと同じ問題');
+  $('daily-meta').textContent = parts.join(' ・ ');
+  $('daily-btn').classList.toggle('is-done', s > 0);
 }
 
-$('daily-btn').addEventListener('click', () => {
+function renderHome() {
+  $('auto-lv').innerHTML = [1, 2, 3, 4, 5].map((i) => `<i class="${i <= auto.L ? 'on' : ''}"></i>`).join('') + `<em>Lv ${auto.L}</em>`;
+  $('auto-cta').textContent = auto.recent.length ? 'つづける' : 'はじめる';
+  if (minTable || tableTried) {
+    const [n, t] = ensureAuto();
+    $('auto-digits').textContent = pad4(n);
+    $('auto-target').textContent = t;
+    $('auto-preview').classList.add('ready');
+  }
+  renderDailyCard();
+  const tt = totals();
+  $('zukan-sub').textContent = tt.played ? `${tt.played} 組 ・ ★ ${tt.stars}` : 'まだ空っぽ';
+}
+let tableTried = false;
+tableReady.then(() => { tableTried = true; if (current === 'home') renderHome(); });
+
+function showHome() {
+  show('home');
+  renderHome();
+}
+
+$('auto-btn').addEventListener('click', async () => { sfx.tap(); await tableReady; openAuto(); });
+$('daily-btn').addEventListener('click', async () => {
+  sfx.tap();
+  await tableReady;
   dailyDate = dateKey(new Date());
   const [n, t] = dailyPuzzle(dailyDate);
   digits = pad4(n);
   openPuzzle(t, 'daily');
 });
-
-// 次のおまかせの問題を選ぶ。[4桁の数, 目標]
-function pickAuto() {
-  const rd = auto.recent.slice(0, RECENT_DIGITS).map((r) => r[0]);
-  const rt = auto.recent.slice(0, RECENT_TARGET).map((r) => r[1]);
-  for (let tries = 0; tries < 5000; tries++) {
-    const i = Math.floor(Math.random() * 1000000);
-    const n = Math.floor(i / 100), t = (i % 100) + 1;
-    if (minTable && lvOf(n, t) !== auto.L) continue;
-    if (rd.includes(n) || rt.includes(t) || starsOf(pad4(n), t) >= 3) continue;
-    return [n, t];
-  }
-  return [Math.floor(Math.random() * 10000), 1 + Math.floor(Math.random() * 100)];
-}
+$('free-btn').addEventListener('click', () => { sfx.tap(); openFree(); });
+$('zukan-btn').addEventListener('click', () => { sfx.tap(); openZukan(); });
+$('help-btn').addEventListener('click', () => openSheet('help'));
+$('settings-btn').addEventListener('click', () => openSheet('settings'));
 
 function openAuto() {
-  if (!auto.cur) { auto.cur = pickAuto(); saveAuto(); }
-  digits = pad4(auto.cur[0]);
-  openPuzzle(auto.cur[1], 'auto');
+  const [n, t] = ensureAuto();
+  digits = pad4(n);
+  openPuzzle(t, 'auto');
 }
-function autoPush() {
-  auto.recent.unshift(auto.cur);
-  auto.recent.length = Math.min(auto.recent.length, RECENT_DIGITS);
-  auto.cur = null;
+
+// =====================================================================
+// パズル
+// =====================================================================
+const MAXLEN = 60;
+// 式は「かたまり」の並び（1 文字か !{N}）とカーソル位置で持つ
+let digits = '0000';
+let mode = 'free';   // 'free' | 'auto' | 'daily'
+let target = 1, toks = [], cur = 0, solved = false, popAt = -1;
+let locked = null;   // 「もっと短く」で戻ったときの式。同じ式のままでは解けた扱いにしない
+let timers = [];
+const later = (fn, ms) => timers.push(setTimeout(fn, ms));
+const clearTimers = () => { timers.forEach(clearTimeout); timers = []; };
+const text = () => toks.join('');
+const isDigit = (t) => /^\d$/.test(t);
+// 数字は最初から並べておき、記号だけを差し込む（数字は消せないので順番は崩れない）
+const canDelete = () => cur > 0 && !isDigit(toks[cur - 1]);
+
+function openPuzzle(t, md = 'free') {
+  mode = md;
+  target = t;
+  toks = [...digits]; cur = 1; popAt = -1;
+  solved = false; locked = null;
+  resetPad();
+  show('puzzle');
+  $('puzzle-target').textContent = t;
+  $('puzzle-tag').innerHTML = md === 'daily' ? '今日の 1 問'
+    : md === 'auto' ? `おまかせ <em>Lv ${auto.L}</em>` : `フリー <em>${digits}</em>`;
+  $('giveup').hidden = md !== 'auto';
+  $('expr').classList.remove('won');
+  showMine();
+  update(true);
+  if (!load('help', false)) openSheet('help');
 }
-// 解けた: ★3 が 2 問続けば L+1、★1 なら L−1、★2 はそのまま（連続は切れる）
-function autoSolved(got) {
-  if (!auto.cur) return;   // 「もっと短く」の 2 回目以降は数えない
-  if (got >= 3) {
-    auto.streak++;
-    if (auto.streak >= 2) { auto.L = Math.min(5, auto.L + 1); auto.streak = 0; }
-  } else {
-    auto.streak = 0;
-    if (got <= 1) auto.L = Math.max(1, auto.L - 1);
+
+function showMine() {
+  const e = entryOf(digits, target);
+  const el = $('mine');
+  if (!e) { el.textContent = ''; return; }
+  el.textContent = e[0] == null ? '解いたことがある' : `自分の一番 ${display(e[1])}`;
+}
+
+// 数字のかたまり（数字と、数字にはさまれた小数点）は 1 枚の板に見せる
+function numeric(i) {
+  const t = toks[i];
+  if (t === undefined) return false;
+  if (isDigit(t)) return true;
+  return t === '.' && isDigit(toks[i - 1] || '') && isDigit(toks[i + 1] || '');
+}
+function clsOf(i) {
+  const t = toks[i];
+  if (numeric(i)) {
+    let c = isDigit(t) ? 't t-d' : 't t-d t-dot';
+    if (numeric(i - 1)) c += ' jl';
+    if (numeric(i + 1)) c += ' jr';
+    return c;
   }
-  autoPush(); saveAuto();
+  if (t === '(' || t === ')') return 't t-par';
+  if ('+−×÷'.includes(t)) return 't t-op';
+  return 't t-fn';
 }
-function autoGiveUp() {
-  auto.L = Math.max(1, auto.L - 1); auto.streak = 0;
-  autoPush(); saveAuto();
+function tokHtml(t) {
+  if (t === '^') return '^';
+  const m = /^!\{(\d+)\}$/.exec(t);
+  if (m) return `!<sup>${m[1]}</sup>`;
+  return t;
 }
-$('auto-btn').addEventListener('click', openAuto);
+
+function renderExpr() {
+  const el = $('expr');
+  let html = '<span class="expr__in">';
+  for (let i = 0; i <= toks.length; i++) {
+    if (i === cur && !solved) html += '<i class="caret" aria-hidden="true"></i>';
+    if (i === toks.length) break;
+    html += `<span class="${clsOf(i)}${i === popAt ? ' pop' : ''}" data-i="${i}" style="--k:${i}">${tokHtml(toks[i])}</span>`;
+  }
+  el.innerHTML = html + '</span>';
+  fitExpr();
+}
+// 1 行に収まるまで字を小さくする。最小でもはみ出すなら折り返す
+function fitExpr() {
+  const el = $('expr');
+  const n = toks.length;
+  let fs = n <= 5 ? 60 : n <= 8 ? 52 : n <= 11 ? 44 : n <= 15 ? 36 : 30;
+  el.classList.remove('wrap');
+  el.style.setProperty('--fs', `${fs}px`);
+  while (el.scrollWidth > el.clientWidth + 1 && fs > 20) {
+    fs -= 2;
+    el.style.setProperty('--fs', `${fs}px`);
+  }
+  if (el.scrollWidth > el.clientWidth + 1) el.classList.add('wrap');
+}
+
+function update(first = false) {
+  renderExpr();
+  $('key-back').disabled = solved || !canDelete();
+  $('key-left').disabled = cur === 0 || solved;
+  $('key-right').disabled = cur === toks.length || solved;
+
+  const a = analyze(text(), digits);
+  const val = $('value');
+  val.className = 'value';
+  if (a.status === 'ok' && a.complete) {
+    val.innerHTML = `<span class="value__eq">=</span>${formatValue(a.value)}`;
+    if (isTarget(a.value, target)) val.classList.add('hit');
+  } else if (a.status === 'ok') {
+    val.textContent = '数字がまだ残っている';
+    val.classList.add('dim');
+  } else if (a.status === 'incomplete') {
+    val.textContent = a.message === '式の続きが要る' ? '…' : a.message;
+    val.classList.add('dim');
+  } else if (a.status !== 'empty') {
+    val.textContent = a.message;
+    val.classList.add('warn');
+  }
+  const k = a.symbols;
+  $('count').innerHTML = `記号 <b>${k}</b>`;
+  if (!first && !solved && text() !== locked && a.status === 'ok' && a.complete && isTarget(a.value, target)) finish(k);
+}
+
+// その 4 桁で、今の目標の後ろから回って最初の ★3 でない目標（無ければ 0）
+function nextOpen() {
+  for (let i = 1; i < 100; i++) {
+    const t = ((target - 1 + i) % 100) + 1;
+    if (starsOf(digits, t) < 3) return t;
+  }
+  return 0;
+}
+
+let lastShare = '';
+// 解けたら: 式を残して値を光らせ、間を置いてから星を 1 つずつ押す
+function finish(k) {
+  solved = true;
+  const m = minOf(digits, target);
+  const got = starsFor(k, m);
+  const prev = starsOf(digits, target);
+  const bestStars = saveBest(digits, target, k, text());
+  const record = m < 255 && k < m;
+  sfx.hit(); buzz(12);
+  renderExpr();
+  $('expr').classList.add('won');
+  $('value').classList.add('hit');
+  showMine();
+  $('nsel').hidden = true;
+  $('giveup').hidden = true;
+
+  // 結果パネルの中身
+  $('r-stars').innerHTML = [0, 1, 2].map((i) => `<span class="st ${i < got ? 'on' : 'off'}">★</span>`).join('');
+  $('r-text').innerHTML = `記号 <b>${k}</b> 個`;
+  let sub = '';
+  if (record) sub = '最小を更新！';
+  else if (got < 3) sub = 'もっと短い式がある';
+  else sub = 'いちばん短い式';
+  if (prev > got) sub += ` ・ この問題の最高は ${'★'.repeat(bestStars)}`;
+  const rs = $('r-sub');
+  rs.textContent = sub;
+  rs.classList.toggle('record', record);
+  rs.classList.toggle('perfect', !record && got >= 3);
+  $('r-retry').hidden = got >= 3;
+  $('r-share').hidden = mode !== 'daily';
+  $('r-daily').hidden = mode !== 'daily';
+  $('r-home').textContent = mode === 'free' ? '一覧' : 'ホーム';
+  const next = $('r-next');
+  if (mode === 'auto') {
+    const dl = autoSolved(got);
+    next.textContent = '次の 1 問';
+    if (dl > 0) sub = `Lv ${auto.L} に上がった ・ ${sub}`;
+    else if (dl < 0) sub = `Lv ${auto.L} に下がった ・ ${sub}`;
+    rs.textContent = sub;
+  } else if (mode === 'daily') {
+    if (bestStars > (daily[dailyDate] || 0)) { daily[dailyDate] = bestStars; save('daily', daily); }
+    const streak = dailyStreak();
+    $('r-daily').textContent = `${streak} 日連続 ・ 次の問題まで ${untilTomorrow()}`;
+    const [, mo, da] = dailyDate.split('-');
+    lastShare = `OCCAM 今日の1問 ${Number(mo)}/${Number(da)}\n${starStr(bestStars)} 記号 ${k} 個${streak > 1 ? `（${streak} 日連続）` : ''}`;
+    next.textContent = 'おまかせで続ける';
+  } else {
+    const nt = nextOpen();
+    next.textContent = nt ? `次へ（${nt} を作る）` : '制覇！ 一覧へ';
+    next.dataset.t = nt;
+  }
+
+  const wait = reduceMotion ? 300 : 750;
+  later(() => {
+    $('keys').hidden = true;
+    $('result').hidden = false;
+    const stars = [...$('r-stars').children];
+    stars.forEach((s, i) => later(() => {
+      s.classList.add('in');
+      if (i < got) sfx.star(i); else sfx.empty();
+      if (i === 2 && record) later(() => sfx.record(), 180);
+    }, 160 + i * 220));
+  }, wait);
+}
+
+function resetPad() {
+  clearTimers();
+  $('keys').hidden = false;
+  $('result').hidden = true;
+  $('nsel').hidden = true;
+}
+
+function press(tok) {
+  if (solved) return;
+  if (text().length + tok.length > MAXLEN) { sfx.nope(); return; }
+  toks.splice(cur, 0, tok);
+  popAt = cur;
+  cur++;
+  sfx.key(); buzz();
+  update();
+  popAt = -1;
+}
+function backspace() {
+  if (solved) return;
+  if (!canDelete()) { sfx.nope(); return; }
+  toks.splice(cur - 1, 1); cur--;
+  sfx.del(); buzz();
+  update();
+}
+function moveCaret(d) {
+  if (solved) return;
+  const c = Math.max(0, Math.min(toks.length, cur + d));
+  if (c === cur) { sfx.nope(); return; }
+  cur = c; sfx.move(); update();
+}
+function clearSymbols() {
+  if (solved) return;
+  if (toks.length === digits.length) { sfx.nope(); return; }
+  toks = [...digits]; cur = 1;
+  sfx.del(); buzz();
+  update();
+}
+
+$('keys').addEventListener('click', (e) => {
+  const b = e.target.closest('button');
+  if (!b || solved) return;
+  if (b.dataset.ch) return press(b.dataset.ch);
+  const k = b.dataset.key;
+  if (k === 'back') backspace();
+  else if (k === 'left') moveCaret(-1);
+  else if (k === 'right') moveCaret(1);
+  else if (k === 'clear') clearSymbols();
+  else if (k === 'factn') openN();
+});
+
+// 式をタップした場所に一番近い「すき間」にカーソルを置く
+$('expr').addEventListener('click', (e) => {
+  if (solved) return;
+  const spans = [...$('expr').querySelectorAll('span[data-i]')];
+  if (!spans.length) return;
+  let bestPos = cur, bestD = Infinity;
+  for (const sp of spans) {
+    const r = sp.getBoundingClientRect();
+    const i = Number(sp.dataset.i);
+    const dy = Math.abs(e.clientY - (r.top + r.height / 2)) * 3;
+    for (const [x, pos] of [[r.left, i], [r.right, i + 1]]) {
+      const d = Math.abs(e.clientX - x) + dy;
+      if (d < bestD) { bestD = d; bestPos = pos; }
+    }
+  }
+  if (bestPos !== cur) { cur = bestPos; sfx.move(); update(); }
+});
+
+// ---- N 重階乗の N ----
+const nInput = $('n-input');
+const getN = () => Math.max(1, Math.min(999, parseInt(nInput.value, 10) || 1));
+function renderN() {
+  const n = getN();
+  $('n-eg').textContent = `x!⁽${n}⁾ = x × (x−${n}) × (x−${2 * n}) × …`;
+  for (const c of $('n-chips').children) c.classList.toggle('on', Number(c.dataset.n) === n);
+}
+$('n-chips').innerHTML = [2, 3, 4, 5, 6, 8].map((n) => `<button class="chip" data-n="${n}">${n}</button>`).join('');
+$('n-chips').addEventListener('click', (e) => {
+  const c = e.target.closest('[data-n]');
+  if (c) { nInput.value = c.dataset.n; sfx.move(); renderN(); }
+});
+function openN() { $('keys').hidden = true; $('nsel').hidden = false; renderN(); sfx.tap(); }
+function closeN() { $('nsel').hidden = true; $('keys').hidden = false; }
+nInput.addEventListener('input', () => { nInput.value = nInput.value.replace(/\D/g, '').slice(0, 3); renderN(); });
+$('n-minus').addEventListener('click', () => { nInput.value = Math.max(1, getN() - 1); sfx.move(); renderN(); });
+$('n-plus').addEventListener('click', () => { nInput.value = Math.min(999, getN() + 1); sfx.move(); renderN(); });
+$('n-cancel').addEventListener('click', () => { closeN(); sfx.del(); });
+$('n-ok').addEventListener('click', () => { const n = getN(); closeN(); press(n === 1 ? '!' : `!{${n}}`); });
+
+// ---- 結果パネルのボタン ----
+function leavePuzzle() {
+  resetPad();
+  if (mode === 'free') openBoard(digits, boardFrom); else showHome();
+}
+$('puzzle-back').addEventListener('click', () => { sfx.tap(); leavePuzzle(); });
+$('r-home').addEventListener('click', () => { sfx.tap(); leavePuzzle(); });
+$('puzzle-help').addEventListener('click', () => openSheet('help'));
+$('giveup').addEventListener('click', () => { sfx.del(); autoGiveUp(); toast(`パスした ・ Lv ${auto.L}`); openAuto(); });
+$('r-next').addEventListener('click', () => {
+  sfx.tap();
+  if (mode === 'auto' || mode === 'daily') return openAuto();
+  const nt = Number($('r-next').dataset.t);
+  resetPad();
+  if (nt) openPuzzle(nt); else openBoard(digits, boardFrom);
+});
+// もっと短く: 今の式のまま入力に戻る
+$('r-retry').addEventListener('click', () => {
+  sfx.tap();
+  locked = text(); solved = false;
+  resetPad();
+  $('expr').classList.remove('won');
+  update(true);
+});
+$('r-share').addEventListener('click', () => { WebAppKit.share({ text: lastShare }); });
+
+// =====================================================================
+// フリー（4 桁を選ぶ）: four-digits.recent = { v: 1, list: ["2027", …] }
+// =====================================================================
+let pick = '';
+let recent = (() => { const d = load('recent', null); return d && d.v === 1 && Array.isArray(d.list) ? d.list.filter((x) => /^\d{4}$/.test(x)).slice(0, 8) : []; })();
+
+function miniMap(d, cls = 'map') {
+  let cells = '';
+  for (let t = 1; t <= 100; t++) cells += `<i class="c${starsOf(d, t)}"></i>`;
+  return `<span class="${cls}">${cells}</span>`;
+}
+
+function renderFree() {
+  let html = '';
+  for (let i = 0; i < 4; i++) html += `<span class="slot${i === pick.length ? ' active' : ''}${pick[i] ? ' filled' : ''}">${pick[i] || ''}</span>`;
+  $('slots').innerHTML = html;
+  const pv = $('free-preview');
+  if (pick.length === 4) {
+    const s = starSum(pick);
+    let n3 = 0;
+    for (let t = 1; t <= 100; t++) if (starsOf(pick, t) === 3) n3++;
+    pv.innerHTML = `${miniMap(pick)}<span class="free__nums"><b>★ ${s}</b> / 300<br>★3 ${n3} / 100</span>`;
+    pv.classList.add('ready');
+  } else {
+    pv.innerHTML = '<span class="free__hint">0000〜9999 のどれでも</span>';
+    pv.classList.remove('ready');
+  }
+  $('free-go').disabled = pick.length !== 4;
+  $('recent').innerHTML = recent.length
+    ? `<span class="recent__label">最近</span>${recent.map((d) => `<button class="chip" data-r="${d}">${d}</button>`).join('')}`
+    : '';
+}
+function openFree() { show('free'); renderFree(); }
+function freeKey(d) {
+  if (d === 'back') { if (!pick.length) return sfx.nope(); pick = pick.slice(0, -1); sfx.del(); }
+  else if (d === 'rand') { pick = pad4(Math.floor(Math.random() * 10000)); sfx.key(); }
+  else { if (pick.length >= 4) pick = ''; pick += d; sfx.key(); }
+  buzz();
+  renderFree();
+}
+$('numpad').addEventListener('click', (e) => { const b = e.target.closest('[data-d]'); if (b) freeKey(b.dataset.d); });
+$('slots').addEventListener('click', () => { if (pick.length) { pick = ''; sfx.del(); renderFree(); } });
+function goFree(d) {
+  recent = [d, ...recent.filter((x) => x !== d)].slice(0, 8);
+  save('recent', { v: 1, list: recent });
+  openBoard(d, 'free');
+}
+$('free-go').addEventListener('click', () => { if (pick.length === 4) { sfx.tap(); goFree(pick); } });
+$('recent').addEventListener('click', (e) => { const c = e.target.closest('[data-r]'); if (c) { sfx.tap(); pick = c.dataset.r; goFree(pick); } });
+$('free-back').addEventListener('click', () => { sfx.tap(); showHome(); });
+
+// =====================================================================
+// 4 桁の 1〜100
+// =====================================================================
+let boardFrom = 'free';
+function openBoard(d, from = 'free') {
+  digits = d;
+  boardFrom = from;
+  show('board');
+  $('board-digits').innerHTML = [...d].map((c) => `<i>${c}</i>`).join('');
+  const s = starSum(d);
+  let n3 = 0, html = '';
+  for (let t = 1; t <= 100; t++) {
+    const st = starsOf(d, t);
+    if (st === 3) n3++;
+    html += `<button class="cell s${st}" data-t="${t}" aria-label="${t}（${st ? `星 ${st}` : '未'}）"><b>${t}</b><small>${'<i></i>'.repeat(3)}</small></button>`;
+  }
+  $('board-grid').innerHTML = html;
+  $('board-bar').style.width = `${(s / 300) * 100}%`;
+  $('board-stars').innerHTML = `<b>★ ${s}</b> / 300`;
+  $('board-full').textContent = n3 === 100 ? '制覇！' : `★3 ${n3} / 100`;
+}
+$('board-grid').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-t]');
+  if (b) { sfx.tap(); openPuzzle(Number(b.dataset.t), 'free'); }
+});
+$('board-back').addEventListener('click', () => { sfx.tap(); if (boardFrom === 'zukan') openZukan(); else openFree(); });
+
+// =====================================================================
+// 図鑑
+// =====================================================================
+let tab = 'digits', numPick = 0;
+const zbody = $('z-body');
+
+function openZukan() {
+  show('zukan');
+  const tt = totals();
+  $('z-stats').innerHTML = [
+    ['解いた', tt.solved], ['★3', tt.three], ['4 桁', tt.played], ['制覇', tt.full],
+  ].map(([k, v]) => `<div class="stat"><b>${v}</b><small>${k}</small></div>`).join('');
+  for (const b of document.querySelectorAll('.tab')) b.classList.toggle('on', b.dataset.tab === tab);
+  if (tab === 'digits') renderDigitsTab(); else if (numPick) renderNumberDetail(); else renderNumbersTab();
+}
+
+function renderDigitsTab() {
+  const ds = Object.keys(best).filter((d) => Object.keys(best[d]).length).sort();
+  if (!ds.length) { zbody.innerHTML = '<div class="zempty">まだ解いた問題がない。<br>解くと、4 桁ごとに 1〜100 の地図がここに並ぶ。</div>'; return; }
+  let cards = '';
+  for (const d of ds) {
+    let n3 = 0;
+    for (let t = 1; t <= 100; t++) if (starsOf(d, t) === 3) n3++;
+    const gold = n3 === 100;
+    cards += `<button class="zcard${gold ? ' gold' : ''}" data-n="${d}"><span class="zcard__head"><b>${d}</b><small>${gold ? '制覇' : `★ ${starSum(d)}`}</small></span>${miniMap(d)}</button>`;
+  }
+  zbody.innerHTML = `<div class="zcards">${cards}</div>`;
+}
+
+function makersOf(t) {
+  const out = [];
+  for (const d of Object.keys(best).sort()) if (best[d][t]) out.push(d);
+  return out;
+}
+
+function renderNumbersTab() {
+  let cells = '';
+  for (let t = 1; t <= 100; t++) {
+    const c = makersOf(t).length;
+    cells += `<button class="cell num${c ? ' has' : ''}" data-t="${t}"><b>${t}</b><small>${c || ''}</small></button>`;
+  }
+  zbody.innerHTML = `<p class="zlead">その数を、何種類の 4 桁から作ったか</p><div class="grid100">${cells}</div>`;
+}
+
+function renderNumberDetail() {
+  let rows = '';
+  for (const d of makersOf(numPick)) {
+    const e = best[d][numPick];
+    const s = starsOfEntry(d, numPick, e);
+    rows += `<button class="mk" data-n="${d}"><b>${d}</b><span>${e[1] ? display(e[1]) : '（式なし）'}</span><small class="s${s}">${starStr(s)}</small></button>`;
+  }
+  zbody.innerHTML = `<div class="zhead"><button class="link-btn" id="num-back">‹ 数の一覧</button><b class="zbig">${numPick}</b></div>`
+    + (rows ? `<div class="mks">${rows}</div>` : '<div class="zempty">まだこの数を作っていない。</div>');
+}
+
+zbody.addEventListener('click', (e) => {
+  if (e.target.closest('#num-back')) { numPick = 0; sfx.tap(); return openZukan(); }
+  const num = e.target.closest('button.num');
+  if (num) { numPick = Number(num.dataset.t); sfx.tap(); return openZukan(); }
+  const c = e.target.closest('button[data-n]');
+  if (c) { sfx.tap(); openBoard(c.dataset.n, 'zukan'); }
+});
+$('tabs').addEventListener('click', (e) => {
+  const b = e.target.closest('.tab');
+  if (!b) return;
+  tab = b.dataset.tab; numPick = 0; sfx.move(); openZukan();
+});
+$('zukan-back').addEventListener('click', () => { sfx.tap(); showHome(); });
+
+// =====================================================================
+// シート（遊び方・設定）
+// =====================================================================
+let openSheetId = null;
+function openSheet(id) {
+  closeSheet();
+  const s = $(id);
+  s.hidden = false;
+  openSheetId = id;
+  if (id === 'settings') $('sound-toggle').checked = settings.sound;
+  requestAnimationFrame(() => s.classList.add('open'));
+}
+function closeSheet() {
+  if (!openSheetId) return;
+  const s = $(openSheetId);
+  s.classList.remove('open');
+  s.hidden = true;
+  if (openSheetId === 'help') save('help', true);
+  openSheetId = null;
+}
+for (const s of document.querySelectorAll('.sheet')) {
+  s.addEventListener('click', (e) => {
+    if (e.target === s || e.target.closest('[data-close]')) { sfx.tap(); closeSheet(); }
+  });
+}
+$('settings-help').addEventListener('click', () => openSheet('help'));
+$('sound-toggle').addEventListener('change', (e) => {
+  settings.sound = e.target.checked;
+  setSound(settings.sound);
+  save('settings', { v: 1, sound: settings.sound });
+  if (settings.sound) sfx.tap();
+});
+
+// =====================================================================
+// キーボード（PC 用の追加）
+// =====================================================================
+const KEYMAP = { '+': '+', '-': '−', '*': '×', x: '×', '/': '÷', '^': '^', '(': '(', ')': ')', '.': '.', '!': '!', r: '√', s: '√' };
+document.addEventListener('keydown', (e) => {
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  if (openSheetId) { if (e.key === 'Escape' || e.key === 'Enter') { e.preventDefault(); closeSheet(); } return; }
+  if (current === 'puzzle') {
+    if (!$('nsel').hidden) {
+      if (e.target === nInput && /^\d$/.test(e.key)) return;
+      if (e.key === 'Enter') { e.preventDefault(); $('n-ok').click(); }
+      else if (e.key === 'Escape') closeN();
+      return;
+    }
+    if (!$('result').hidden) {
+      if (e.key === 'Enter') { e.preventDefault(); $('r-next').click(); }
+      else if (e.key === 'Escape') leavePuzzle();
+      return;
+    }
+    if (KEYMAP[e.key]) { e.preventDefault(); press(KEYMAP[e.key]); }
+    else if (e.key === 'n') openN();
+    else if (e.key === 'ArrowLeft') moveCaret(-1);
+    else if (e.key === 'ArrowRight') moveCaret(1);
+    else if (e.key === 'Backspace') { e.preventDefault(); backspace(); }
+    else if (e.key === 'Delete') clearSymbols();
+    else if (e.key === 'Escape') leavePuzzle();
+  } else if (current === 'free') {
+    if (/^\d$/.test(e.key)) freeKey(e.key);
+    else if (e.key === 'Backspace') freeKey('back');
+    else if (e.key === 'Enter') $('free-go').click();
+    else if (e.key === 'Escape') showHome();
+  } else if (e.key === 'Escape' && current !== 'home') {
+    if (current === 'board') $('board-back').click(); else showHome();
+  }
+});
 
 showHome();
+if (!load('help', false)) openSheet('help');

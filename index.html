@@ -4,13 +4,13 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#0d1017">
-  <meta name="description" content="4つの数字を順番どおりに使い、目標の数を作る数字パズル。">
+  <meta name="description" content="4つの数字を並んだ順のまま使い、1〜100を作るテンパズル。記号が少ないほど星が増える。いちばん短い式を探す数字パズル。">
   <title>OCCAM — テンパズル：4つの数字で1〜100を最短の式で</title>
 
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="OCCAM">
   <meta property="og:title" content="OCCAM — テンパズル：4つの数字で1〜100を最短の式で">
-  <meta property="og:description" content="4つの数字を順番どおりに使い、目標の数を作る数字パズル。">
+  <meta property="og:description" content="4つの数字を並んだ順のまま使い、1〜100を作るテンパズル。記号が少ないほど星が増える。">
   <meta property="og:url" content="https://t-of.github.io/four-digits/">
   <meta property="og:image" content="https://t-of.github.io/four-digits/icons/og.png">
   <meta property="og:image:width" content="1200">
@@ -31,127 +31,267 @@
   <link rel="stylesheet" href="./style.css">
 </head>
 <body>
-  <main class="app">
-    <header class="bar">
-      <h1 class="bar__title">OCCAM</h1>
-      <div class="bar__actions">
-        <button class="pill" data-wak="install" hidden>アプリにする</button>
-        <button class="pill" data-wak="share">共有</button>
-      </div>
-    </header>
+  <main class="app" id="app">
 
-    <section class="stage" id="stage">
-      <!-- ホーム -->
-      <div class="screen" id="s-home">
-        <button class="card-auto" id="auto-btn">
-          <small>おまかせ</small>
-          <span class="lv" id="auto-lv"></span>
-          <span class="card-auto__go">次の 1 問 ›</span>
+    <!-- ========== ホーム ========== -->
+    <section class="screen home" id="s-home">
+      <div class="home__top">
+        <button class="icon-btn" id="settings-btn" aria-label="設定">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>
         </button>
-        <button class="card-daily" id="daily-btn">
-          <small>今日の 1 問</small>
-          <b id="daily-date"></b>
-          <span class="card-daily__st" id="daily-st"></span>
-          <span class="card-daily__streak" id="daily-streak"></span>
+      </div>
+
+      <header class="brand">
+        <h1 class="logo" aria-label="OCCAM"><span>OCCAM</span></h1>
+        <p class="tagline">4つの数字を、いちばん短い式で。</p>
+      </header>
+
+      <div class="home__cards">
+        <button class="card card--play" id="auto-btn">
+          <span class="card__row">
+            <span class="card__label">おまかせ</span>
+            <span class="lvmeter" id="auto-lv" aria-label="難しさ"></span>
+          </span>
+          <span class="preview" id="auto-preview" aria-hidden="true">
+            <span class="preview__digits" id="auto-digits">····</span>
+            <span class="preview__arrow">→</span>
+            <span class="preview__target" id="auto-target">··</span>
+          </span>
+          <span class="card__cta" id="auto-cta">はじめる</span>
         </button>
-        <div class="home-sub">
-          <button class="back" id="free-btn">フリー</button>
-          <button class="back" id="zukan-btn">図鑑</button>
+
+        <button class="card card--daily" id="daily-btn">
+          <span class="card__row">
+            <span class="card__label">今日の 1 問</span>
+            <span class="card__date" id="daily-date"></span>
+          </span>
+          <span class="daily__body">
+            <span class="daily__stars" id="daily-st"></span>
+            <span class="daily__meta" id="daily-meta"></span>
+          </span>
+        </button>
+
+        <div class="card-pair">
+          <button class="card card--mini" id="free-btn">
+            <span class="card__label">フリー</span>
+            <span class="card__sub">4 桁を選んで 1〜100</span>
+          </button>
+          <button class="card card--mini" id="zukan-btn">
+            <span class="card__label">図鑑</span>
+            <span class="card__sub" id="zukan-sub">集めた式</span>
+          </button>
+        </div>
+
+        <button class="link-btn" id="help-btn">遊び方</button>
+      </div>
+
+      <footer class="credit">
+        <div class="credit__kit">
+          <button class="pill" data-wak="install" hidden>アプリにする</button>
+          <button class="pill" data-wak="share">共有</button>
+        </div>
+        <div><a href="/">T.OF...</a> ・ <a href="https://t-of.github.io/contact/">問い合わせ</a> ・ <span class="ver">v13</span></div>
+      </footer>
+    </section>
+
+    <!-- ========== パズル ========== -->
+    <section class="screen puzzle" id="s-puzzle" hidden>
+      <header class="topbar">
+        <button class="icon-btn" id="puzzle-back" aria-label="戻る">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
+        </button>
+        <div class="topbar__title" id="puzzle-tag"></div>
+        <button class="icon-btn" id="puzzle-help" aria-label="遊び方と記号">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.3a2.6 2.6 0 015 .9c0 1.7-2.5 2.2-2.5 3.8"/><circle cx="12" cy="17.2" r=".6" class="fill"/></svg>
+        </button>
+      </header>
+
+      <div class="stage">
+        <div class="goal">
+          <span class="goal__num" id="puzzle-target"></span>
+          <span class="goal__label">を作る</span>
+        </div>
+        <div class="expr" id="expr" aria-live="polite" aria-label="式"></div>
+        <div class="value" id="value"></div>
+        <div class="meta">
+          <span class="count" id="count"></span>
+          <span class="mine" id="mine"></span>
         </div>
       </div>
 
-      <!-- 1. 4 桁の一覧（フリー） -->
-      <div class="screen" id="s-list" hidden>
-        <div class="jump">
-          <button class="back" id="list-back">‹ ホーム</button>
-          <input id="jump" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="4桁を打って飛ぶ" autocomplete="off" aria-label="4桁を打って飛ぶ">
-          <span class="jump__sum" id="list-sum"></span>
-        </div>
-        <div class="list" id="list-scroll">
-          <div class="list__spacer" id="list-spacer"><div class="list__rows" id="list-rows"></div></div>
-        </div>
-      </div>
-
-      <!-- 図鑑 -->
-      <div class="screen" id="s-zukan" hidden>
-        <div class="head">
-          <button class="back" id="zukan-back">‹ ホーム</button>
-          <div class="tabs" id="tabs">
-            <button class="tab on" data-tab="digits">4桁</button>
-            <button class="tab" data-tab="numbers">数</button>
-          </div>
-        </div>
-        <div class="zbody" id="z-body"></div>
-      </div>
-
-      <!-- 2. 目標の一覧 -->
-      <div class="screen" id="s-targets" hidden>
-        <div class="head">
-          <button class="back" id="targets-back">‹ 一覧</button>
-          <div class="head__digits" id="targets-digits"></div>
-          <div class="head__sum" id="targets-sum"></div>
-        </div>
-        <div class="targets" id="targets"></div>
-      </div>
-
-      <!-- 3. パズル -->
-      <div class="screen" id="s-puzzle" hidden>
-        <div class="head">
-          <button class="back" id="puzzle-back">‹ 目標</button>
-          <div class="head__target"><small id="puzzle-tag"></small><b id="puzzle-target"></b> を作る</div>
-        </div>
-        <!-- 表示部分（数字・式・値）はキーの上の空きいっぱいに広げ、中身は上下の真ん中に -->
-        <div class="display">
-        <div class="board__digits" id="puzzle-digits"></div>
-        <div class="expr" id="expr" aria-live="polite"></div>
-        <div class="info">
-          <div class="info__value" id="value"></div>
-          <div class="info__count" id="count"></div>
-          <div class="info__mine" id="mine"></div>
-          <button class="pill giveup" id="giveup" hidden>あきらめる</button>
-        </div>
-        </div>
-        <!-- 入力は画面の下に寄せる（親指が届く位置） -->
-        <div class="pad">
+      <div class="pad" id="pad">
         <div class="keys" id="keys">
-          <button class="key key--mv" data-key="left" id="key-left" aria-label="カーソルを左へ">◀</button>
-          <button class="key key--mv" data-key="right" id="key-right" aria-label="カーソルを右へ">▶</button>
-          <button class="key" data-ch="√">√</button>
-          <button class="key" data-ch="^">^</button>
+          <button class="key key--op" data-ch="+">+</button>
+          <button class="key key--op" data-ch="−" aria-label="引く・マイナス">−</button>
+          <button class="key key--op" data-ch="×">×</button>
+          <button class="key key--op" data-ch="÷">÷</button>
+          <button class="key key--fn" data-key="back" id="key-back" aria-label="カーソルの前の記号を消す">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5h11v14H9l-6-7z"/><path d="M12.5 9.5l5 5M17.5 9.5l-5 5"/></svg>
+          </button>
           <button class="key" data-ch="(">(</button>
           <button class="key" data-ch=")">)</button>
-          <button class="key" data-ch=".">.</button>
-          <button class="key key--fn" data-key="back" id="key-back" aria-label="カーソルの前の記号を1つ消す">⌫</button>
-          <button class="key" data-ch="+">+</button>
-          <button class="key" data-ch="−">−</button>
-          <button class="key" data-ch="×">×</button>
-          <button class="key" data-ch="÷">÷</button>
-          <button class="key" data-ch="!">!</button>
-          <button class="key" data-key="factn">!⁽ᴺ⁾</button>
-          <button class="key key--fn key--wide" data-key="clear">全部消す</button>
+          <button class="key" data-ch="^" aria-label="累乗">x<sup>y</sup></button>
+          <button class="key" data-ch="√" aria-label="平方根">√</button>
+          <button class="key" data-ch="." aria-label="小数点">.</button>
+          <button class="key key--mv" data-key="left" id="key-left" aria-label="カーソルを左へ">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 6l-6 6 6 6"/></svg>
+          </button>
+          <button class="key key--fact" data-ch="!" aria-label="階乗">!</button>
+          <button class="key key--fact" data-key="factn" aria-label="N 重階乗">!<sup>N</sup></button>
+          <button class="key key--mv" data-key="right" id="key-right" aria-label="カーソルを右へ">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 6l6 6-6 6"/></svg>
+          </button>
+          <button class="key key--fn" data-key="clear" aria-label="記号を全部消す">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12a7 7 0 1 0 2.1-5"/><path d="M5 4v4h4"/></svg>
+          </button>
         </div>
+
         <div class="nsel" id="nsel" hidden>
-          <span>N 重階乗の N</span>
-          <button class="key" id="n-minus" aria-label="N を減らす">−</button>
-          <input id="n-input" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="3" value="2" aria-label="N">
-          <button class="key" id="n-plus" aria-label="N を増やす">+</button>
-          <button class="key key--ok" id="n-ok">入れる</button>
-          <button class="key" id="n-cancel">やめる</button>
+          <div class="nsel__head">
+            <b>N 重階乗</b>
+            <span class="nsel__eg" id="n-eg"></span>
+          </div>
+          <div class="nsel__dial">
+            <button class="key" id="n-minus" aria-label="N を減らす">−</button>
+            <input id="n-input" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="3" value="2" aria-label="N">
+            <button class="key" id="n-plus" aria-label="N を増やす">+</button>
+          </div>
+          <div class="nsel__chips" id="n-chips"></div>
+          <div class="nsel__acts">
+            <button class="key" id="n-cancel">やめる</button>
+            <button class="key key--primary" id="n-ok">入れる</button>
+          </div>
         </div>
+
         <div class="result" id="result" hidden>
           <div class="result__stars" id="r-stars"></div>
           <div class="result__text" id="r-text"></div>
           <div class="result__sub" id="r-sub"></div>
-          <button class="key key--ok result__next" id="r-next">次へ</button>
-          <button class="key result__retry" id="r-retry">もっと短く</button>
+          <div class="result__daily" id="r-daily" hidden></div>
+          <button class="btn btn--primary" id="r-next">次へ</button>
+          <div class="result__row">
+            <button class="btn" id="r-retry">もっと短く</button>
+            <button class="btn" id="r-share" hidden>結果を共有</button>
+            <button class="btn" id="r-home">ホーム</button>
+          </div>
         </div>
-        </div>
+
+        <button class="pass" id="giveup" hidden>この問題をパス</button>
       </div>
     </section>
 
-    <footer class="credit">
-      <a href="/">T.OF...</a> ・ <a href="https://t-of.github.io/contact/">問い合わせ</a> ・ <span class="ver">v12</span>
-    </footer>
+    <!-- ========== フリー（4 桁を選ぶ） ========== -->
+    <section class="screen free" id="s-free" hidden>
+      <header class="topbar">
+        <button class="icon-btn" id="free-back" aria-label="ホームへ">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
+        </button>
+        <div class="topbar__title">フリー</div>
+        <span class="icon-btn icon-btn--ghost"></span>
+      </header>
+
+      <div class="free__body">
+        <p class="free__lead">4 桁の数字を選ぶ</p>
+        <div class="slots" id="slots" aria-label="選んだ 4 桁"></div>
+        <div class="free__preview" id="free-preview"></div>
+        <button class="btn btn--primary" id="free-go" disabled>この 4 桁で遊ぶ</button>
+        <div class="recent" id="recent"></div>
+      </div>
+
+      <div class="numpad" id="numpad">
+        <button class="key" data-d="1">1</button><button class="key" data-d="2">2</button><button class="key" data-d="3">3</button>
+        <button class="key" data-d="4">4</button><button class="key" data-d="5">5</button><button class="key" data-d="6">6</button>
+        <button class="key" data-d="7">7</button><button class="key" data-d="8">8</button><button class="key" data-d="9">9</button>
+        <button class="key key--fn" data-d="rand">ランダム</button><button class="key" data-d="0">0</button>
+        <button class="key key--fn" data-d="back" aria-label="1 文字消す">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5h11v14H9l-6-7z"/><path d="M12.5 9.5l5 5M17.5 9.5l-5 5"/></svg>
+        </button>
+      </div>
+    </section>
+
+    <!-- ========== 4 桁の 1〜100 ========== -->
+    <section class="screen board" id="s-board" hidden>
+      <header class="topbar">
+        <button class="icon-btn" id="board-back" aria-label="戻る">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
+        </button>
+        <div class="topbar__title topbar__title--digits" id="board-digits"></div>
+        <span class="icon-btn icon-btn--ghost"></span>
+      </header>
+      <div class="board__sum">
+        <div class="bar"><i id="board-bar"></i></div>
+        <div class="board__nums"><span id="board-stars"></span><span id="board-full"></span></div>
+      </div>
+      <div class="grid100" id="board-grid"></div>
+    </section>
+
+    <!-- ========== 図鑑 ========== -->
+    <section class="screen zukan" id="s-zukan" hidden>
+      <header class="topbar">
+        <button class="icon-btn" id="zukan-back" aria-label="戻る">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
+        </button>
+        <div class="topbar__title">図鑑</div>
+        <span class="icon-btn icon-btn--ghost"></span>
+      </header>
+      <div class="stats" id="z-stats"></div>
+      <div class="tabs" id="tabs" role="tablist">
+        <button class="tab on" data-tab="digits" role="tab">4 桁</button>
+        <button class="tab" data-tab="numbers" role="tab">数</button>
+      </div>
+      <div class="zbody" id="z-body"></div>
+    </section>
+
+    <!-- ========== シート（遊び方・設定） ========== -->
+    <div class="sheet" id="help" hidden role="dialog" aria-modal="true" aria-labelledby="help-title">
+      <div class="sheet__panel">
+        <div class="sheet__grip"></div>
+        <h2 id="help-title">遊び方</h2>
+        <ol class="steps">
+          <li>
+            <b>4 つの数字を、並んだ順のまま全部使う</b>
+            <span class="eg"><span class="eg__d">2027</span> で <span class="eg__t">47</span> を作るなら <code>20+27</code></span>
+          </li>
+          <li>
+            <b>数字のあいだに記号を差し込む</b>
+            <span>何も入れなければ数字はつながる（<code>20</code>・<code>202</code>）。式をタップするか ◀ ▶ で入れる場所を選ぶ。</span>
+          </li>
+          <li>
+            <b>記号が少ないほど ★ が増える</b>
+            <span>いちばん短い式で ★★★。<code>20+27</code> は記号 1 個。括弧は 1 組で 1 個。</span>
+          </li>
+        </ol>
+        <h3>使える記号</h3>
+        <dl class="symtab">
+          <dt>+ − × ÷</dt><dd>四則。− は先頭か「(」の直後なら マイナス（<code>−2</code>）</dd>
+          <dt>( )</dt><dd>括弧。1 組で 1 個</dd>
+          <dt>x<sup>y</sup></dt><dd>累乗 <code>2^3</code> = 8。指数は整数</dd>
+          <dt>√</dt><dd>平方根 <code>√9</code> = 3。割り切れるときだけ</dd>
+          <dt>.</dt><dd>小数点 <code>0.5</code>。数字と数字のあいだに</dd>
+          <dt>!</dt><dd>階乗 <code>4!</code> = 24。続けて <code>7!!</code> = 7×5×3×1</dd>
+          <dt>!<sup>N</sup></dt><dd>N 重階乗 <code>9!⁽³⁾</code> = 9×6×3。N によらず 1 個</dd>
+          <dt>!n</dt><dd>数の前の ! は部分階乗 <code>!4</code> = 9</dd>
+        </dl>
+        <p class="note">√・!・部分階乗の対象は、数か括弧だけ（<code>√(√16)</code>）。</p>
+        <button class="btn btn--primary" data-close>わかった</button>
+      </div>
+    </div>
+
+    <div class="sheet" id="settings" hidden role="dialog" aria-modal="true" aria-labelledby="settings-title">
+      <div class="sheet__panel">
+        <div class="sheet__grip"></div>
+        <h2 id="settings-title">設定</h2>
+        <label class="switch">
+          <span>効果音</span>
+          <input type="checkbox" id="sound-toggle">
+          <i aria-hidden="true"></i>
+        </label>
+        <button class="btn" id="settings-help">遊び方を見る</button>
+        <button class="btn btn--primary" data-close>閉じる</button>
+      </div>
+    </div>
+
+    <div class="toast" id="toast" hidden></div>
   </main>
 
   <script src="./webapp-kit/webapp-kit.js"></script>
