@@ -90,6 +90,8 @@ export function parse(text) {
   function postfix() {
     let a = atom();
     if (peek() && peek().t === '!') {
+      // 階乗の対象も数か括弧だけ（SPEC）。√9! や !4! は括弧が要る
+      if (a.k === 'sqrt' || a.k === 'pfact') fail('階乗の対象は数か括弧', false);
       a = { k: 'fact', n: toks[p++].n, a };
       if (peek() && peek().t === '!') fail('階乗の階乗は括弧で包む', false);
     }
