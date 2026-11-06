@@ -82,6 +82,8 @@ export function parse(text) {
   function power() {
     const l = postfix();
     if (peek() && peek().t === '^') {
+      // 部分階乗を冪乗の底にするときは括弧が要る（!2^7 は不可、(!2)^7 は可。2026-11-06 オーナー）
+      if (l.k === 'pfact') fail('部分階乗を底にするときは括弧で包む', false);
       p++;
       return { k: 'pow', l, r: power() };   // 右結合
     }
