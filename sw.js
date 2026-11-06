@@ -1,7 +1,7 @@
 // オフライン用のサービスワーカー。
 //
 // 自分のファイルは network-first（つながっていれば常に最新、圏外なら保存しておいた版）。
-// Google Fonts は変わらないので cache-first。
+// 外部のフォント（Google Fonts）は cache-first。Jost は自前の fonts/ に置き、SHELL に入れてある。
 //
 // 注意: キャッシュ（CacheStorage）は t-of.github.io のすべてのアプリで共有されている。
 // 古いキャッシュを消すときは、必ず自分の PREFIX で始まるものだけを消す。
@@ -9,7 +9,7 @@
 // ブラウザの HTTP キャッシュを通さない（install は reload、fetch は no-cache）。古い main.js と新しい index.html が混ざって動かなくなるのを防ぐ。
 
 const PREFIX = 'four-digits-';
-const VERSION = 'v14';
+const VERSION = 'v15';
 const CACHE = `${PREFIX}${VERSION}`;
 const FONT_CACHE = `${PREFIX}fonts`;
 
@@ -21,6 +21,7 @@ const SHELL = [
   './src/expr.js',
   './src/sfx.js',
   './data/puzzle.bin',
+  './fonts/jost.woff2',
   './manifest.webmanifest',
   './webapp-kit/webapp-kit.css',
   './webapp-kit/webapp-kit.js',

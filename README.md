@@ -28,3 +28,7 @@
 ```sh
 python3 -m http.server 8000   # → http://localhost:8000/
 ```
+
+## 書体
+
+数字とラテン文字は [Jost](https://github.com/indestructible-type/Jost)（SIL Open Font License 1.1、`fonts/OFL.txt`）。`fonts/jost.woff2` は wght 400–800 の可変フォントを、ラテン・数字・使う記号だけに絞ったもの。日本語はシステムフォント。

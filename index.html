@@ -27,6 +27,7 @@
   <link rel="icon" type="image/png" sizes="32x32" href="./icons/favicon-32.png">
   <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
 
+  <link rel="preload" href="./fonts/jost.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="./webapp-kit/webapp-kit.css">
   <link rel="stylesheet" href="./style.css">
 </head>
@@ -87,7 +88,7 @@
           <button class="pill" data-wak="install" hidden>アプリにする</button>
           <button class="pill" data-wak="share">共有</button>
         </div>
-        <div><a href="/">T.OF...</a> ・ <a href="https://t-of.github.io/contact/">問い合わせ</a> ・ <span class="ver">v14</span></div>
+        <div><a href="/">T.OF...</a> ・ <a href="https://t-of.github.io/contact/">問い合わせ</a> ・ <span class="ver">v15</span></div>
       </footer>
     </section>
 
@@ -126,14 +127,14 @@
           </button>
           <button class="key" data-ch="(">(</button>
           <button class="key" data-ch=")">)</button>
-          <button class="key" data-ch="^" aria-label="累乗">x<sup>y</sup></button>
+          <button class="key" data-ch="^" aria-label="累乗"><span>x<sup>y</sup></span></button>
           <button class="key" data-ch="√" aria-label="平方根">√</button>
           <button class="key" data-ch="." aria-label="小数点">.</button>
           <button class="key key--mv" data-key="left" id="key-left" aria-label="カーソルを左へ">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 6l-6 6 6 6"/></svg>
           </button>
           <button class="key key--fact" data-ch="!" aria-label="階乗">!</button>
-          <button class="key key--fact" data-key="factn" aria-label="N 重階乗">!<sup>N</sup></button>
+          <button class="key key--fact" data-key="factn" aria-label="N 重階乗"><span>!<sup>N</sup></span></button>
           <button class="key key--mv" data-key="right" id="key-right" aria-label="カーソルを右へ">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 6l6 6-6 6"/></svg>
           </button>
