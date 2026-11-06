@@ -182,6 +182,8 @@ $('targets-back').addEventListener('click', showList);
 const MAXLEN = 60;
 // 式は「かたまり」の並び（1 文字か !{N}）とカーソル位置で持つ。text は並びをつないだもの
 let target = 1, toks = [], cur = 0, solved = false;
+let locked = null;   // 「もっと短く」で戻ったときの式。同じ式のままでは解けた扱いにしない
+let pauseTimer = 0;
 const text = () => toks.join('');
 const isDigit = (t) => /^\d$/.test(t);
 // 数字は最初から並べておき、プレイヤーは記号だけを差し込む（数字は消せないので順番は崩れない）
@@ -191,7 +193,8 @@ const startToks = () => [...digits];
 function openPuzzle(t) {
   target = t;
   toks = startToks(); cur = 1;   // 1 つ目と 2 つ目の数字の間から始める
-  solved = false;
+  solved = false; locked = null; clearTimeout(pauseTimer);
+  resetView();
   show('puzzle');
   $('puzzle-target').textContent = t;
   $('nsel').hidden = true;
@@ -224,25 +227,45 @@ function update() {
   } else { val.textContent = a.message; val.classList.add('warn'); }
   $('count').textContent = `記号 ${a.symbols} 個`;
 
-  if (!solved && a.status === 'ok' && a.complete && isTarget(a.value, target)) finish(a.symbols);
+  if (!solved && text() !== locked && a.status === 'ok' && a.complete && isTarget(a.value, target)) finish(a.symbols);
 }
 
+// その 4 桁で、今の目標の後ろから回って最初の ★3 でない目標（無ければ 0）
+function nextOpen() {
+  for (let i = 1; i < 100; i++) {
+    const t = ((target - 1 + i) % 100) + 1;
+    if (starsOf(digits, t) < 3) return t;
+  }
+  return 0;
+}
+
+// 解けたら: 式を残して値を光らせ、少し間を置いてから星と結果を出す
 function finish(k) {
   solved = true;
   const m = minOf(digits, target);
   const got = starsFor(k, m);
+  const prev = starsOf(digits, target);
   const best = saveStars(digits, target, got);
-  $('keys').hidden = true;
+  $('value').classList.add('hit');
   $('nsel').hidden = true;
-  $('result').hidden = false;
-  $('r-stars').textContent = '★'.repeat(got) + '☆'.repeat(3 - got);
-  $('r-text').textContent = `${display(text())} = ${target}`;
-  $('r-sub').textContent = `記号 ${k} 個 ・ ${m >= 255 ? '最小は未計算' : `最小は ${m} 個`} ・ この問題の最高 ${'★'.repeat(best)}`;
-  $('r-next').hidden = target >= 100;
   renderExpr();
+  $('r-stars').innerHTML = [0, 1, 2].map((i) => `<span class="${i < got ? 'on' : 'off'}" style="animation-delay:${i * 180}ms">${i < got ? '★' : '☆'}</span>`).join('');
+  $('r-text').textContent = `記号 ${k} 個`;
+  let sub = '';
+  if (m < 255 && k < m) sub = '最小を更新！';
+  else if (got < 3) sub = 'もっと短い式がある';
+  if (prev > got) sub += `${sub ? ' ・ ' : ''}この問題の最高は ${'★'.repeat(best)}`;
+  $('r-sub').textContent = sub;
+  $('r-sub').classList.toggle('record', m < 255 && k < m);
+  const nt = nextOpen();
+  $('r-next').textContent = nt ? '次へ' : '制覇！ 目標の一覧へ';
+  $('r-next').dataset.t = nt;
+  $('r-retry').hidden = got >= 3;
+  pauseTimer = setTimeout(() => { $('keys').hidden = true; $('result').hidden = false; }, 800);
 }
 
 function resetView() {
+  clearTimeout(pauseTimer);
   $('keys').hidden = false;
   $('result').hidden = true;
 }
@@ -296,7 +319,16 @@ $('n-cancel').addEventListener('click', closeN);
 $('n-ok').addEventListener('click', () => { const n = getN(); closeN(); press(`!{${n}}`); });
 
 $('puzzle-back').addEventListener('click', () => { resetView(); showTargets(); });
-$('r-list').addEventListener('click', () => { resetView(); showList(); });
-$('r-next').addEventListener('click', () => { resetView(); openPuzzle(target + 1); });
+$('r-next').addEventListener('click', () => {
+  const nt = Number($('r-next').dataset.t);
+  resetView();
+  if (nt) openPuzzle(nt); else showTargets();
+});
+// もっと短く: 今の式のまま入力に戻る
+$('r-retry').addEventListener('click', () => {
+  locked = text(); solved = false;
+  resetView();
+  update();
+});
 
 showList();
