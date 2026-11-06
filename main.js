@@ -219,7 +219,7 @@ function update() {
   if (a.status === 'empty') { val.textContent = ''; }
   else if (a.status === 'incomplete') { val.textContent = '未完成'; val.classList.add('dim'); }
   else if (a.status === 'ok') {
-    val.textContent = `= ${formatValue(a.value)}${a.complete ? '' : '（数字がまだ残っている）'}`;
+    val.textContent = `${formatValue(a.value)}${a.complete ? '' : '（数字がまだ残っている）'}`;
     if (!a.complete) val.classList.add('dim');
   } else { val.textContent = a.message; val.classList.add('warn'); }
   $('count').textContent = `記号 ${a.symbols} 個`;

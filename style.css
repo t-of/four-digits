@@ -121,9 +121,10 @@ button { font: inherit; color: inherit; }
 .caret { display: inline-block; width: 2px; height: 1.1em; margin: 0 1px; vertical-align: -0.15em; background: var(--accent); animation: blink 1s steps(1) infinite; }
 @keyframes blink { 50% { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .caret { animation: none; } }
-.info { display: flex; justify-content: space-between; gap: 10px; font-size: 14px; min-height: 44px; align-items: baseline; }
-.info__value { flex: 1; color: var(--fg); word-break: break-all; font-size: 28px; font-weight: 700; font-variant-numeric: tabular-nums; }
-.info__value.dim, .info__value.warn { font-size: 15px; font-weight: 400; }
+/* 式の値: 中央に大きく。記号の数はその下に小さく */
+.info { display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 14px; min-height: 76px; text-align: center; }
+.info__value { color: var(--fg); word-break: break-all; font-size: 48px; font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.info__value.dim, .info__value.warn { font-size: 16px; font-weight: 400; line-height: 1.6; }
 .info__value.warn { color: #ff9b8a; }
 .info__value.dim { color: var(--muted); }
 .info__count { color: var(--muted); white-space: nowrap; }
@@ -154,4 +155,4 @@ button { font: inherit; color: inherit; }
 .result__sub { font-size: 13px; color: var(--muted); }
 .result__btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 6px; }
 
-@media (max-height: 640px) { .board__digits { font-size: 36px; } .key { min-height: 46px; } .expr { min-height: 52px; font-size: 21px; } }
+@media (max-height: 640px) { .board__digits { font-size: 36px; } .info__value { font-size: 36px; } .info { min-height: 62px; } .key { min-height: 46px; } .expr { min-height: 52px; font-size: 21px; } }
