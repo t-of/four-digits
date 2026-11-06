@@ -22,6 +22,19 @@ cat results/parts/progress.txt         # 進捗（30 秒ごと）
 python3 src/merge.py                   # results/min.bin と results/examples.tsv.gz を作る（run_all.sh が最後に自動で呼ぶ）
 python3 src/check.py results/examples.tsv.gz 5000   # 例の式を別の解析器で読み直す（ランダム 5000 問）
 ```
+### 記号を絞った版（難しさの物差し用。OPSET）
+環境変数 `OPSET` で使える記号を絞る。未設定（または `all`）は全記号で、結果は上と同じ。
+- `OPSET=basic` — 連結・＋ − × ÷・括弧だけ（小数点・単独のマイナス・^・√・階乗・部分階乗なし）
+- `OPSET=mid` — basic ＋ 小数点・単独のマイナス・^・√・階乗（N=1 の `!` だけ。N 重階乗と部分階乗なし）
+- 見つからない問題は 255（basic は多い）。どの問題も 全記号 ≤ mid ≤ basic になる。
+```sh
+OPSET=mid W=8 src/run_all.sh          # 出力は results/mid/parts/、まとめは results/mid/min_mid.bin と results/mid/examples_mid.tsv.gz
+OPSET=basic W=8 src/run_all.sh        # results/basic/ に同じ形（min_basic.bin, examples_basic.tsv.gz）
+OPSET=mid ./src/minsym one 2027
+OPSET=mid python3 src/merge.py        # merge.py も OPSET を読む
+```
+進捗は `results/<OPSET>/parts/progress.txt`。全記号版（未設定）は今までどおり `results/parts/`・`results/min.bin`・`results/examples.tsv.gz`。
+
 - 途中で止まったら同じ `W` で `run_all.sh` を流し直す（`results/parts/part_<w>.tsv` の `#done s` の組を飛ばして続きから）。`W` を変えると組の割り振りがずれるので変えない。
 - 環境変数で範囲を変えられる: `FACT_MAX`、`CMAX`、`LEVEL_CAP`（下の表）。部分階乗は冪乗の底にできない（SPEC。2026-11-06 オーナーが決めた）。`SUBF_BASE=1` で旧仕様（底にできる）。
 

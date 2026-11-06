@@ -34,6 +34,8 @@ static i128 DMAX;          // 分母 ≤ 10^18
 static int FACT_MAX = 1000; // N 重階乗の対象 n の上限（N=1 の階乗も同じ。値の上限でさらに切れる）
 static int CMAX = 30;      // 記号数の上限（超えたら 255）
 static int SUBF_CLS = 4;    // 部分階乗の種類。冪乗の底にするときは括弧が要る（2026-11-06 オーナー）。環境変数 SUBF_BASE=1 で旧仕様（底にできる）
+// 使える記号（環境変数 OPSET。未設定=全部）。basic: 連結・＋−×÷・括弧だけ。mid: basic＋小数点・単独のマイナス・^・√・階乗（N=1 のみ）
+static bool OP_DEC = true, OP_NEGOK = true, OP_POWOK = true, OP_SQRTOK = true, OP_FACT1 = true, OP_FACTN = true, OP_SUBFOK = true;
 static size_t LEVEL_CAP = 60000000; // 1 区間の項目数の上限（メモリ保護。超えたら打ち切り＝255 扱い、ログに出す）
 
 struct Rat { i128 n, d; };
@@ -189,7 +191,7 @@ static void level(Interval& I, int c) {
         if (ok) { i128 n = 0; for (int k = I.i; k < I.j; k++) n = n * 10 + D[k]; insert(I, Rat{n, 1}, PRIM, OP_LIT, 0, 0, -1, 0); }
         return;
     }
-    if (c == 1) {
+    if (c == 1 && OP_DEC) {
         for (int p = 1; p < len; p++) { // 小数点を p 桁目の後ろに
             if (p > 1 && D[I.i] == 0) continue;
             i128 n = 0, d = 1; for (int k = I.i; k < I.j; k++) n = n * 10 + D[k];
@@ -216,7 +218,7 @@ static void level(Interval& I, int c) {
                         if (cb & C_RMUL) { if (r_mul(ea.v, eb.v, o)) insert(I, o, ea.cls == NEGM ? NEGM : MUL, OP_MUL, (int)x, (int)y, 0, k); }
                         if (cb & C_RDIV) { if (r_div(ea.v, eb.v, o)) insert(I, o, ea.cls == NEGM ? NEGM : MUL, OP_DIV, (int)x, (int)y, 0, k); }
                     }
-                    if ((ca & C_BASE) && (cb & C_EXP) && eb.v.d == 1) { if (r_pow(ea.v, eb.v, o)) insert(I, o, POW, OP_POW, (int)x, (int)y, 0, k); }
+                    if (OP_POWOK && (ca & C_BASE) && (cb & C_EXP) && eb.v.d == 1) { if (r_pow(ea.v, eb.v, o)) insert(I, o, POW, OP_POW, (int)x, (int)y, 0, k); }
                 }
             }
         }
@@ -227,17 +229,18 @@ static void level(Interval& I, int c) {
         Entry e = I.E[x]; // insert で E が伸びるので写す
         int ce = CTX[e.cls];
         if (e.cls != PRIM) { insert(I, e.v, PRIM, OP_PAREN, (int)x, 0, 0, 0); }
-        if (ce & C_UMIN) { insert(I, Rat{-e.v.n, e.v.d}, NEGM, OP_NEG, (int)x, 0, 0, 0); }
+        if (OP_NEGOK && (ce & C_UMIN)) { insert(I, Rat{-e.v.n, e.v.d}, NEGM, OP_NEG, (int)x, 0, 0, 0); }
         if (ce & C_UNOP) {
             // √
             i128 a, b;
-            if (e.v.n >= 0 && isqrt_exact(e.v.n, a) && isqrt_exact(e.v.d, b)) insert(I, Rat{a, b}, U, OP_SQRT, (int)x, 0, 0, 0);
+            if (OP_SQRTOK && e.v.n >= 0 && isqrt_exact(e.v.n, a) && isqrt_exact(e.v.d, b)) insert(I, Rat{a, b}, U, OP_SQRT, (int)x, 0, 0, 0);
             if (e.v.d == 1 && e.v.n >= 0) {
                 i128 n = e.v.n;
-                if (n < SUBF_N) insert(I, Rat{SUBF[n], 1}, SUBF_CLS, OP_SUBF, (int)x, 0, 0, 0);
-                if (n <= 1) insert(I, Rat{1, 1}, U, OP_FACT, (int)x, 0, 1, 0);
+                if (OP_SUBFOK && n < SUBF_N) insert(I, Rat{SUBF[n], 1}, SUBF_CLS, OP_SUBF, (int)x, 0, 0, 0);
+                if (!OP_FACT1) {}
+                else if (n <= 1) insert(I, Rat{1, 1}, U, OP_FACT, (int)x, 0, 1, 0);
                 else if (n <= FACT_MAX) {
-                    for (int N = 1; N <= n - 2; N++) {
+                    for (int N = 1; N <= (OP_FACTN ? n - 2 : (n >= 3 ? 1 : 0)); N++) {
                         i128 p = 1; bool ok = true;
                         for (i128 m = n; m > 0; m -= N) { if (__builtin_mul_overflow(p, m, &p) || p > NMAX) { ok = false; break; } }
                         if (ok) insert(I, Rat{p, 1}, U, OP_FACT, (int)x, 0, N, 0);
@@ -306,6 +309,11 @@ static double solve(int s, std::string& out, size_t& maxEntries) {
 int main(int argc, char** argv) {
     NMAX = 1; for (int k = 0; k < 36; k++) NMAX *= 10;
     DMAX = 1; for (int k = 0; k < 18; k++) DMAX *= 10;
+    if (const char* op = getenv("OPSET")) {
+        if (!strcmp(op, "basic")) { OP_DEC = OP_NEGOK = OP_POWOK = OP_SQRTOK = OP_FACT1 = OP_FACTN = OP_SUBFOK = false; }
+        else if (!strcmp(op, "mid")) { OP_FACTN = OP_SUBFOK = false; }
+        else if (*op && strcmp(op, "all")) { fprintf(stderr, "OPSET は basic / mid / all\n"); return 1; }
+    }
     if (getenv("FACT_MAX")) FACT_MAX = atoi(getenv("FACT_MAX"));
     if (getenv("CMAX")) CMAX = atoi(getenv("CMAX"));
     if (getenv("SUBF_BASE")) SUBF_CLS = 5;
