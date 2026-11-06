@@ -16,6 +16,7 @@
   --tx3: #5f687b;
   --gold: #f4c25b;
   --gold2: #ffe09a;
+  --gold-tx: var(--gold);
   --gold-dim: rgba(var(--gold-rgb), 0.14);
   --ink: #86c9ff;
   --ink-dim: rgba(134, 201, 255, 0.14);
@@ -75,11 +76,14 @@
     --tx: #16181d;
     --tx2: #5b5f6a;
     --tx3: #6a6d77;
-    --gold: #8a6100;
-    --gold2: #6e4d00;
-    --gold-rgb: 138, 97, 0;
-    --gold-top: #9a6f08;
-    --on-gold: #fffaf0;
+    --gold: #c08a00;
+    --gold2: #a87800;
+    --gold-rgb: 192, 138, 0;
+    --gold-top: #e3b232;
+    --on-gold: #1a1305;
+    --gold-tx: #8a6100;
+    --gold-hi-top: #e3b232;
+    --gold-hi-bot: #a87800;
     --ink: #1a5fa8;
     --ink-dim: rgba(26, 95, 168, 0.1);
     --warn: #b3392a;
@@ -111,11 +115,14 @@
     --tx: #16181d;
     --tx2: #5b5f6a;
     --tx3: #6a6d77;
-    --gold: #8a6100;
-    --gold2: #6e4d00;
-    --gold-rgb: 138, 97, 0;
-    --gold-top: #9a6f08;
-    --on-gold: #fffaf0;
+    --gold: #c08a00;
+    --gold2: #a87800;
+    --gold-rgb: 192, 138, 0;
+    --gold-top: #e3b232;
+    --on-gold: #1a1305;
+    --gold-tx: #8a6100;
+    --gold-hi-top: #e3b232;
+    --gold-hi-bot: #a87800;
     --ink: #1a5fa8;
     --ink-dim: rgba(26, 95, 168, 0.1);
     --warn: #b3392a;
@@ -619,7 +626,7 @@ code {
 .st.on.in { color: var(--gold); text-shadow: 0 0 24px rgba(var(--gold-rgb), 0.6); }
 .result__text { font-size: var(--fs-2); color: var(--tx3); font-feature-settings: "tnum"; }
 .result__sub { font-size: var(--fs-2); color: var(--tx2); min-height: 20px; }
-.result__sub.record { color: var(--gold2); font-weight: 600; }
+.result__sub.record { color: var(--gold-tx); font-weight: 600; }
 .result__daily { font-size: var(--fs-1); color: var(--tx2); font-feature-settings: "tnum"; }
 .result .btn--primary { min-height: 56px; font-size: var(--fs-2); margin-top: 8px; }
 .result__row { display: flex; gap: 8px; }
@@ -652,7 +659,7 @@ code {
 .slot.active { border-color: var(--ink); box-shadow: 0 0 0 3px var(--ink-dim); }
 .free__preview { min-height: 72px; display: flex; align-items: center; gap: 16px; }
 .free__nums { font-size: var(--fs-1); color: var(--tx2); line-height: 1.7; font-feature-settings: "tnum"; }
-.free__nums b { color: var(--gold); font-size: var(--fs-2); font-weight: 600; }
+.free__nums b { color: var(--gold-tx); font-size: var(--fs-2); font-weight: 600; }
 .free__body > .btn--primary { width: min(320px, 100%); min-height: 52px; font-size: var(--fs-2); }
 .recent { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 8px; max-width: 100%; min-height: 40px; }
 .numpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
@@ -679,7 +686,7 @@ code {
 .bar { height: 4px; border-radius: 2px; background: var(--s2); overflow: hidden; }
 .bar i { display: block; height: 100%; background: linear-gradient(90deg, var(--gold), var(--gold2)); border-radius: 2px; transition: width 0.5s var(--ease); }
 .board__nums { display: flex; justify-content: space-between; align-items: baseline; margin-top: 8px; font-size: var(--fs-1); color: var(--tx2); font-feature-settings: "tnum"; }
-.board__nums b { color: var(--gold); }
+.board__nums b { color: var(--gold-tx); }
 
 .grid100 {
   display: grid;
@@ -712,7 +719,7 @@ code {
 .cell.s3 small i { background: var(--gold); }
 .cell.s1 b, .cell.s2 b { color: var(--tx); }
 .cell.s3 { background: var(--gold-dim); border-color: rgba(var(--gold-rgb), 0.45); }
-.cell.s3 b { color: var(--gold2); }
+.cell.s3 b { color: var(--gold-tx); }
 
 /* =====================================================================
    図鑑
@@ -748,9 +755,9 @@ code {
 .zcard__head small { font-size: var(--fs-1); color: var(--tx2); }
 .zcard .map { width: 100%; }
 .zcard.gold { border-color: var(--gold); background: linear-gradient(160deg, rgba(var(--gold-rgb), 0.16), var(--s1)); }
-.zcard.gold .zcard__head small { color: var(--gold); font-weight: 600; }
+.zcard.gold .zcard__head small { color: var(--gold-tx); font-weight: 600; }
 
-.cell.num small { height: auto; font-size: var(--fs-1); transform: scale(0.8); transform-origin: center top; color: var(--gold); line-height: 1; min-height: 10px; }
+.cell.num small { height: auto; font-size: var(--fs-1); transform: scale(0.8); transform-origin: center top; color: var(--gold-tx); line-height: 1; min-height: 10px; }
 .cell.num.has { border-color: rgba(var(--gold-rgb), 0.35); }
 .cell.num.has b { color: var(--tx); }
 
@@ -772,7 +779,7 @@ code {
 .mk b { font-size: var(--fs-2); font-weight: 800; letter-spacing: 0.04em; font-feature-settings: "tnum"; }
 .mk span { font-size: var(--fs-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--tx); }
 .mk small { font-size: var(--fs-1); color: var(--tx3); letter-spacing: var(--track-label); }
-.mk small.s3 { color: var(--gold); }
+.mk small.s3 { color: var(--gold-tx); }
 
 /* =====================================================================
    シート
@@ -834,7 +841,7 @@ code {
   font-size: var(--fs-1); font-weight: 800;
 }
 .eg__d { font-weight: 800; color: var(--tx); letter-spacing: 0.04em; }
-.eg__t { font-weight: 800; color: var(--gold); }
+.eg__t { font-weight: 800; color: var(--gold-tx); }
 
 .symtab { margin: 0; display: grid; grid-template-columns: 64px 1fr; gap: 0; font-size: var(--fs-2); line-height: 1.6; }
 .symtab dt, .symtab dd { margin: 0; padding: 8px 0; border-bottom: 1px solid var(--line); }
@@ -873,3 +880,15 @@ code {
 #sound-btn.muted .on { display: none; }
 #sound-btn.muted .off { display: inline; }
 .symtab small { font-size: var(--fs-1); color: var(--tx3); }
+
+/* 明るい版: 大きな金の数字は上が明るく下が濃いグラデーションにして、白地でも金に見せる */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) :is(.goal__num, .preview__target, .zbig) {
+    background: linear-gradient(180deg, var(--gold-hi-top), var(--gold-hi-bot));
+    -webkit-background-clip: text; background-clip: text; color: transparent; text-shadow: none;
+  }
+}
+:root[data-theme="light"] :is(.goal__num, .preview__target, .zbig) {
+  background: linear-gradient(180deg, var(--gold-hi-top), var(--gold-hi-bot));
+  -webkit-background-clip: text; background-clip: text; color: transparent; text-shadow: none;
+}
