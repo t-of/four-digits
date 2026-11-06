@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0d1017">
+  <meta name="description" content="4つの数字を順番どおりに使い、目標の数を作る数字パズル。">
+  <title>four-digits — 4つの数字で目標を作る</title>
+
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="four-digits">
+  <meta property="og:title" content="four-digits — 4つの数字で目標を作る">
+  <meta property="og:description" content="4つの数字を順番どおりに使い、目標の数を作る数字パズル。">
+  <meta property="og:url" content="https://t-of.github.io/four-digits/">
+  <meta property="og:image" content="https://t-of.github.io/four-digits/icons/og.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:locale" content="ja_JP">
+  <meta name="twitter:card" content="summary_large_image">
+
+  <!-- apple-mobile-web-app-status-bar-style は付けない（black-translucent だと iOS 26 で上部が隠れる） -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="four-digits">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
+  <link rel="icon" type="image/png" sizes="32x32" href="./icons/favicon-32.png">
+  <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
+
+  <link rel="stylesheet" href="./webapp-kit/webapp-kit.css">
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <main class="app">
+    <header class="bar">
+      <h1 class="bar__title">four-digits</h1>
+      <div class="bar__actions">
+        <button class="pill" data-wak="install" hidden>アプリにする</button>
+        <button class="pill" data-wak="share">共有</button>
+      </div>
+    </header>
+
+    <section class="stage" id="stage">
+      <!-- 1. 4 桁の一覧 -->
+      <div class="screen" id="s-list">
+        <div class="jump">
+          <input id="jump" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="4桁を打って飛ぶ" autocomplete="off" aria-label="4桁を打って飛ぶ">
+          <span class="jump__sum" id="list-sum"></span>
+        </div>
+        <div class="list" id="list-scroll">
+          <div class="list__spacer" id="list-spacer"><div class="list__rows" id="list-rows"></div></div>
+        </div>
+      </div>
+
+      <!-- 2. 目標の一覧 -->
+      <div class="screen" id="s-targets" hidden>
+        <div class="head">
+          <button class="back" id="targets-back">‹ 一覧</button>
+          <div class="head__digits" id="targets-digits"></div>
+          <div class="head__sum" id="targets-sum"></div>
+        </div>
+        <div class="targets" id="targets"></div>
+      </div>
+
+      <!-- 3. パズル -->
+      <div class="screen" id="s-puzzle" hidden>
+        <div class="head">
+          <button class="back" id="puzzle-back">‹ 目標</button>
+          <div class="head__digits" id="puzzle-digits"></div>
+          <div class="head__target">→ <b id="puzzle-target"></b></div>
+        </div>
+        <div class="expr" id="expr" aria-live="polite"></div>
+        <div class="info">
+          <div class="info__value" id="value"></div>
+          <div class="info__count" id="count"></div>
+        </div>
+        <div class="keys" id="keys">
+          <button class="key key--next" data-key="next" id="key-next">次の数字</button>
+          <button class="key" data-ch=".">.</button>
+          <button class="key key--fn" data-key="back" aria-label="1つ消す">⌫</button>
+          <button class="key" data-ch="(">(</button>
+          <button class="key" data-ch=")">)</button>
+          <button class="key" data-ch="√">√</button>
+          <button class="key" data-ch="^">^</button>
+          <button class="key" data-ch="+">+</button>
+          <button class="key" data-ch="−">−</button>
+          <button class="key" data-ch="×">×</button>
+          <button class="key" data-ch="÷">÷</button>
+          <button class="key" data-ch="!">!</button>
+          <button class="key" data-key="factn">!⁽ᴺ⁾</button>
+          <button class="key key--fn key--wide" data-key="clear">全部消す</button>
+        </div>
+        <div class="nsel" id="nsel" hidden>
+          <span>N 重階乗の N</span>
+          <button class="key" id="n-minus" aria-label="N を減らす">−</button>
+          <input id="n-input" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="3" value="2" aria-label="N">
+          <button class="key" id="n-plus" aria-label="N を増やす">+</button>
+          <button class="key key--ok" id="n-ok">入れる</button>
+          <button class="key" id="n-cancel">やめる</button>
+        </div>
+        <div class="result" id="result" hidden>
+          <div class="result__stars" id="r-stars"></div>
+          <div class="result__text" id="r-text"></div>
+          <div class="result__sub" id="r-sub"></div>
+          <div class="result__btns">
+            <button class="key key--ok" id="r-next">次の目標へ</button>
+            <button class="key" id="r-list">一覧へ</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <footer class="credit">
+      <a href="/">T.OF...</a> ・ <a href="https://t-of.github.io/contact/">問い合わせ</a> ・ <span class="ver">v1</span>
+    </footer>
+  </main>
+
+  <script src="./webapp-kit/webapp-kit.js"></script>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>
