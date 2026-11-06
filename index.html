@@ -36,14 +36,13 @@
     <!-- ========== ホーム ========== -->
     <section class="screen home" id="s-home">
       <div class="home__top">
-        <button class="icon-btn" id="settings-btn" aria-label="設定">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>
+        <button class="icon-btn" id="sound-btn" aria-label="効果音" aria-pressed="true">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h3.5L12 6v12l-4.5-3.5H4z"/><path class="on" d="M15.5 9a4 4 0 010 6M18 6.5a7.5 7.5 0 010 11"/><path class="off" d="M16 9.5l5 5M21 9.5l-5 5"/></svg>
         </button>
       </div>
 
       <header class="brand">
         <h1 class="logo" aria-label="OCCAM"><span>OCCAM</span></h1>
-        <p class="tagline">4つの数字を、いちばん短い式で。</p>
       </header>
 
       <div class="home__cards">
@@ -57,7 +56,6 @@
             <span class="preview__arrow">→</span>
             <span class="preview__target" id="auto-target">··</span>
           </span>
-          <span class="card__cta" id="auto-cta">はじめる</span>
         </button>
 
         <button class="card card--daily" id="daily-btn">
@@ -74,15 +72,14 @@
         <div class="card-pair">
           <button class="card card--mini" id="free-btn">
             <span class="card__label">フリー</span>
-            <span class="card__sub">4 桁を選んで 1〜100</span>
+            
           </button>
           <button class="card card--mini" id="zukan-btn">
             <span class="card__label">図鑑</span>
-            <span class="card__sub" id="zukan-sub">集めた式</span>
+            <span class="card__sub" id="zukan-sub"></span>
           </button>
         </div>
 
-        <button class="link-btn" id="help-btn">遊び方</button>
       </div>
 
       <footer class="credit">
@@ -90,7 +87,7 @@
           <button class="pill" data-wak="install" hidden>アプリにする</button>
           <button class="pill" data-wak="share">共有</button>
         </div>
-        <div><a href="/">T.OF...</a> ・ <a href="https://t-of.github.io/contact/">問い合わせ</a> ・ <span class="ver">v13</span></div>
+        <div><a href="/">T.OF...</a> ・ <a href="https://t-of.github.io/contact/">問い合わせ</a> ・ <span class="ver">v14</span></div>
       </footer>
     </section>
 
@@ -109,7 +106,6 @@
       <div class="stage">
         <div class="goal">
           <span class="goal__num" id="puzzle-target"></span>
-          <span class="goal__label">を作る</span>
         </div>
         <div class="expr" id="expr" aria-live="polite" aria-label="式"></div>
         <div class="value" id="value"></div>
@@ -148,8 +144,7 @@
 
         <div class="nsel" id="nsel" hidden>
           <div class="nsel__head">
-            <b>N 重階乗</b>
-            <span class="nsel__eg" id="n-eg"></span>
+              <span class="nsel__eg" id="n-eg"></span>
           </div>
           <div class="nsel__dial">
             <button class="key" id="n-minus" aria-label="N を減らす">−</button>
@@ -172,11 +167,10 @@
           <div class="result__row">
             <button class="btn" id="r-retry">もっと短く</button>
             <button class="btn" id="r-share" hidden>結果を共有</button>
-            <button class="btn" id="r-home">ホーム</button>
           </div>
         </div>
 
-        <button class="pass" id="giveup" hidden>この問題をパス</button>
+        <button class="pass" id="giveup" hidden>パス</button>
       </div>
     </section>
 
@@ -191,10 +185,9 @@
       </header>
 
       <div class="free__body">
-        <p class="free__lead">4 桁の数字を選ぶ</p>
         <div class="slots" id="slots" aria-label="選んだ 4 桁"></div>
         <div class="free__preview" id="free-preview"></div>
-        <button class="btn btn--primary" id="free-go" disabled>この 4 桁で遊ぶ</button>
+        <button class="btn btn--primary" id="free-go" disabled>遊ぶ</button>
         <div class="recent" id="recent"></div>
       </div>
 
@@ -202,7 +195,9 @@
         <button class="key" data-d="1">1</button><button class="key" data-d="2">2</button><button class="key" data-d="3">3</button>
         <button class="key" data-d="4">4</button><button class="key" data-d="5">5</button><button class="key" data-d="6">6</button>
         <button class="key" data-d="7">7</button><button class="key" data-d="8">8</button><button class="key" data-d="9">9</button>
-        <button class="key key--fn" data-d="rand">ランダム</button><button class="key" data-d="0">0</button>
+        <button class="key key--fn" data-d="rand" aria-label="ランダム">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"/><circle class="fill" cx="9" cy="9" r="1.2"/><circle class="fill" cx="15" cy="9" r="1.2"/><circle class="fill" cx="12" cy="12" r="1.2"/><circle class="fill" cx="9" cy="15" r="1.2"/><circle class="fill" cx="15" cy="15" r="1.2"/></svg>
+        </button><button class="key" data-d="0">0</button>
         <button class="key key--fn" data-d="back" aria-label="1 文字消す">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5h11v14H9l-6-7z"/><path d="M12.5 9.5l5 5M17.5 9.5l-5 5"/></svg>
         </button>
@@ -242,52 +237,26 @@
       <div class="zbody" id="z-body"></div>
     </section>
 
-    <!-- ========== シート（遊び方・設定） ========== -->
+    <!-- ========== シート（遊び方） ========== -->
     <div class="sheet" id="help" hidden role="dialog" aria-modal="true" aria-labelledby="help-title">
       <div class="sheet__panel">
-        <div class="sheet__grip"></div>
+        <div class="sheet__grip" data-close></div>
         <h2 id="help-title">遊び方</h2>
         <ol class="steps">
-          <li>
-            <b>4 つの数字を、並んだ順のまま全部使う</b>
-            <span class="eg"><span class="eg__d">2027</span> で <span class="eg__t">47</span> を作るなら <code>20+27</code></span>
-          </li>
-          <li>
-            <b>数字のあいだに記号を差し込む</b>
-            <span>何も入れなければ数字はつながる（<code>20</code>・<code>202</code>）。式をタップするか ◀ ▶ で入れる場所を選ぶ。</span>
-          </li>
-          <li>
-            <b>記号が少ないほど ★ が増える</b>
-            <span>いちばん短い式で ★★★。<code>20+27</code> は記号 1 個。括弧は 1 組で 1 個。</span>
-          </li>
+          <li><span class="eg"><span class="eg__d">2027</span> → <span class="eg__t">47</span>　<code>20+27</code></span></li>
+          <li>記号を差し込む。入れなければ数字はつながる</li>
+          <li>記号が少ないほど ★</li>
         </ol>
-        <h3>使える記号</h3>
         <dl class="symtab">
-          <dt>+ − × ÷</dt><dd>四則。− は先頭か「(」の直後なら マイナス（<code>−2</code>）</dd>
-          <dt>( )</dt><dd>括弧。1 組で 1 個</dd>
-          <dt>x<sup>y</sup></dt><dd>累乗 <code>2^3</code> = 8。指数は整数</dd>
-          <dt>√</dt><dd>平方根 <code>√9</code> = 3。割り切れるときだけ</dd>
-          <dt>.</dt><dd>小数点 <code>0.5</code>。数字と数字のあいだに</dd>
-          <dt>!</dt><dd>階乗 <code>4!</code> = 24。続けて <code>7!!</code> = 7×5×3×1</dd>
-          <dt>!<sup>N</sup></dt><dd>N 重階乗 <code>9!⁽³⁾</code> = 9×6×3。N によらず 1 個</dd>
-          <dt>!n</dt><dd>数の前の ! は部分階乗 <code>!4</code> = 9</dd>
+          <dt>+ − × ÷</dt><dd><code>2+2</code></dd>
+          <dt>( )</dt><dd><code>(2+2)×2</code>　1 組で 1 個</dd>
+          <dt>x<sup>y</sup></dt><dd><code>2^3</code> = 8</dd>
+          <dt>√</dt><dd><code>√9</code> = 3</dd>
+          <dt>.</dt><dd><code>.5</code></dd>
+          <dt>!</dt><dd><code>4!</code> = 24　<code>7!!</code> = 7·5·3·1</dd>
+          <dt>!<sup>N</sup></dt><dd><code>9!⁽³⁾</code> = 9·6·3　<small>N 重階乗・N によらず 1 個</small></dd>
+          <dt>!n</dt><dd><code>!4</code> = 9　<small>部分階乗</small></dd>
         </dl>
-        <p class="note">√・!・部分階乗の対象は、数か括弧だけ（<code>√(√16)</code>）。</p>
-        <button class="btn btn--primary" data-close>わかった</button>
-      </div>
-    </div>
-
-    <div class="sheet" id="settings" hidden role="dialog" aria-modal="true" aria-labelledby="settings-title">
-      <div class="sheet__panel">
-        <div class="sheet__grip"></div>
-        <h2 id="settings-title">設定</h2>
-        <label class="switch">
-          <span>効果音</span>
-          <input type="checkbox" id="sound-toggle">
-          <i aria-hidden="true"></i>
-        </label>
-        <button class="btn" id="settings-help">遊び方を見る</button>
-        <button class="btn btn--primary" data-close>閉じる</button>
       </div>
     </div>
 

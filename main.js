@@ -249,14 +249,13 @@ function renderDailyCard() {
   const streak = dailyStreak();
   const parts = [];
   if (streak) parts.push(`${streak} 日連続`);
-  parts.push(s ? `次の問題まで ${untilTomorrow()}` : 'みんなと同じ問題');
+  if (s) parts.push(`次の問題まで ${untilTomorrow()}`);
   $('daily-meta').textContent = parts.join(' ・ ');
   $('daily-btn').classList.toggle('is-done', s > 0);
 }
 
 function renderHome() {
   $('auto-lv').innerHTML = [1, 2, 3, 4, 5].map((i) => `<i class="${i <= auto.L ? 'on' : ''}"></i>`).join('') + `<em>Lv ${auto.L}</em>`;
-  $('auto-cta').textContent = auto.recent.length ? 'つづける' : 'はじめる';
   if (minTable || tableTried) {
     const [n, t] = ensureAuto();
     $('auto-digits').textContent = pad4(n);
@@ -265,7 +264,7 @@ function renderHome() {
   }
   renderDailyCard();
   const tt = totals();
-  $('zukan-sub').textContent = tt.played ? `${tt.played} 組 ・ ★ ${tt.stars}` : 'まだ空っぽ';
+  $('zukan-sub').textContent = tt.played ? `★ ${tt.stars}` : '';
 }
 let tableTried = false;
 tableReady.then(() => { tableTried = true; if (current === 'home') renderHome(); });
@@ -286,8 +285,19 @@ $('daily-btn').addEventListener('click', async () => {
 });
 $('free-btn').addEventListener('click', () => { sfx.tap(); openFree(); });
 $('zukan-btn').addEventListener('click', () => { sfx.tap(); openZukan(); });
-$('help-btn').addEventListener('click', () => openSheet('help'));
-$('settings-btn').addEventListener('click', () => openSheet('settings'));
+function renderSound() {
+  const b = $('sound-btn');
+  b.setAttribute('aria-pressed', String(settings.sound));
+  b.classList.toggle('muted', !settings.sound);
+}
+renderSound();
+$('sound-btn').addEventListener('click', () => {
+  settings.sound = !settings.sound;
+  setSound(settings.sound);
+  save('settings', { v: 1, sound: settings.sound });
+  renderSound();
+  if (settings.sound) sfx.tap();
+});
 
 function openAuto() {
   const [n, t] = ensureAuto();
@@ -333,7 +343,7 @@ function showMine() {
   const e = entryOf(digits, target);
   const el = $('mine');
   if (!e) { el.textContent = ''; return; }
-  el.textContent = e[0] == null ? '解いたことがある' : `自分の一番 ${display(e[1])}`;
+  el.textContent = e[0] == null ? '✓' : `式 ${display(e[1])}`;
 }
 
 // 数字のかたまり（数字と、数字にはさまれた小数点）は 1 枚の板に見せる
@@ -399,18 +409,12 @@ function update(first = false) {
   if (a.status === 'ok' && a.complete) {
     val.innerHTML = `<span class="value__eq">=</span>${formatValue(a.value)}`;
     if (isTarget(a.value, target)) val.classList.add('hit');
-  } else if (a.status === 'ok') {
-    val.textContent = '数字がまだ残っている';
-    val.classList.add('dim');
-  } else if (a.status === 'incomplete') {
-    val.textContent = a.message === '式の続きが要る' ? '…' : a.message;
-    val.classList.add('dim');
   } else if (a.status !== 'empty') {
-    val.textContent = a.message;
-    val.classList.add('warn');
+    val.textContent = '—';
+    val.classList.add('dim');
   }
   const k = a.symbols;
-  $('count').innerHTML = `記号 <b>${k}</b>`;
+  $('count').textContent = k;
   if (!first && !solved && text() !== locked && a.status === 'ok' && a.complete && isTarget(a.value, target)) finish(k);
 }
 
@@ -429,7 +433,6 @@ function finish(k) {
   solved = true;
   const m = minOf(digits, target);
   const got = starsFor(k, m);
-  const prev = starsOf(digits, target);
   const bestStars = saveBest(digits, target, k, text());
   const record = m < 255 && k < m;
   sfx.hit(); buzz(12);
@@ -442,26 +445,19 @@ function finish(k) {
 
   // 結果パネルの中身
   $('r-stars').innerHTML = [0, 1, 2].map((i) => `<span class="st ${i < got ? 'on' : 'off'}">★</span>`).join('');
-  $('r-text').innerHTML = `記号 <b>${k}</b> 個`;
-  let sub = '';
-  if (record) sub = '最小を更新！';
-  else if (got < 3) sub = 'もっと短い式がある';
-  else sub = 'いちばん短い式';
-  if (prev > got) sub += ` ・ この問題の最高は ${'★'.repeat(bestStars)}`;
+  $('r-text').textContent = k;
+  let sub = record ? '最小を更新！' : '';
   const rs = $('r-sub');
   rs.textContent = sub;
   rs.classList.toggle('record', record);
-  rs.classList.toggle('perfect', !record && got >= 3);
-  $('r-retry').hidden = got >= 3;
+    $('r-retry').hidden = got >= 3;
   $('r-share').hidden = mode !== 'daily';
   $('r-daily').hidden = mode !== 'daily';
-  $('r-home').textContent = mode === 'free' ? '一覧' : 'ホーム';
   const next = $('r-next');
   if (mode === 'auto') {
     const dl = autoSolved(got);
     next.textContent = '次の 1 問';
-    if (dl > 0) sub = `Lv ${auto.L} に上がった ・ ${sub}`;
-    else if (dl < 0) sub = `Lv ${auto.L} に下がった ・ ${sub}`;
+    if (dl) sub = [sub, `Lv ${auto.L} ${dl > 0 ? '↑' : '↓'}`].filter(Boolean).join(' ・ ');
     rs.textContent = sub;
   } else if (mode === 'daily') {
     if (bestStars > (daily[dailyDate] || 0)) { daily[dailyDate] = bestStars; save('daily', daily); }
@@ -472,7 +468,7 @@ function finish(k) {
     next.textContent = 'おまかせで続ける';
   } else {
     const nt = nextOpen();
-    next.textContent = nt ? `次へ（${nt} を作る）` : '制覇！ 一覧へ';
+    next.textContent = nt ? '次へ' : '制覇！';
     next.dataset.t = nt;
   }
 
@@ -584,9 +580,8 @@ function leavePuzzle() {
   if (mode === 'free') openBoard(digits, boardFrom); else showHome();
 }
 $('puzzle-back').addEventListener('click', () => { sfx.tap(); leavePuzzle(); });
-$('r-home').addEventListener('click', () => { sfx.tap(); leavePuzzle(); });
 $('puzzle-help').addEventListener('click', () => openSheet('help'));
-$('giveup').addEventListener('click', () => { sfx.del(); autoGiveUp(); toast(`パスした ・ Lv ${auto.L}`); openAuto(); });
+$('giveup').addEventListener('click', () => { sfx.del(); autoGiveUp(); toast(`Lv ${auto.L}`); openAuto(); });
 $('r-next').addEventListener('click', () => {
   sfx.tap();
   if (mode === 'auto' || mode === 'daily') return openAuto();
@@ -628,12 +623,12 @@ function renderFree() {
     pv.innerHTML = `${miniMap(pick)}<span class="free__nums"><b>★ ${s}</b> / 300<br>★3 ${n3} / 100</span>`;
     pv.classList.add('ready');
   } else {
-    pv.innerHTML = '<span class="free__hint">0000〜9999 のどれでも</span>';
+    pv.innerHTML = '';
     pv.classList.remove('ready');
   }
   $('free-go').disabled = pick.length !== 4;
   $('recent').innerHTML = recent.length
-    ? `<span class="recent__label">最近</span>${recent.map((d) => `<button class="chip" data-r="${d}">${d}</button>`).join('')}`
+    ? `${recent.map((d) => `<button class="chip" data-r="${d}">${d}</button>`).join('')}`
     : '';
 }
 function openFree() { show('free'); renderFree(); }
@@ -700,7 +695,7 @@ function openZukan() {
 
 function renderDigitsTab() {
   const ds = Object.keys(best).filter((d) => Object.keys(best[d]).length).sort();
-  if (!ds.length) { zbody.innerHTML = '<div class="zempty">まだ解いた問題がない。<br>解くと、4 桁ごとに 1〜100 の地図がここに並ぶ。</div>'; return; }
+  if (!ds.length) { zbody.innerHTML = '<div class="zempty">まだ空っぽ</div>'; return; }
   let cards = '';
   for (const d of ds) {
     let n3 = 0;
@@ -731,10 +726,10 @@ function renderNumberDetail() {
   for (const d of makersOf(numPick)) {
     const e = best[d][numPick];
     const s = starsOfEntry(d, numPick, e);
-    rows += `<button class="mk" data-n="${d}"><b>${d}</b><span>${e[1] ? display(e[1]) : '（式なし）'}</span><small class="s${s}">${starStr(s)}</small></button>`;
+    rows += `<button class="mk" data-n="${d}"><b>${d}</b><span>${e[1] ? display(e[1]) : '—'}</span><small class="s${s}">${starStr(s)}</small></button>`;
   }
   zbody.innerHTML = `<div class="zhead"><button class="link-btn" id="num-back">‹ 数の一覧</button><b class="zbig">${numPick}</b></div>`
-    + (rows ? `<div class="mks">${rows}</div>` : '<div class="zempty">まだこの数を作っていない。</div>');
+    + (rows ? `<div class="mks">${rows}</div>` : '<div class="zempty">—</div>');
 }
 
 zbody.addEventListener('click', (e) => {
@@ -752,7 +747,7 @@ $('tabs').addEventListener('click', (e) => {
 $('zukan-back').addEventListener('click', () => { sfx.tap(); showHome(); });
 
 // =====================================================================
-// シート（遊び方・設定）
+// シート（遊び方）
 // =====================================================================
 let openSheetId = null;
 function openSheet(id) {
@@ -760,7 +755,6 @@ function openSheet(id) {
   const s = $(id);
   s.hidden = false;
   openSheetId = id;
-  if (id === 'settings') $('sound-toggle').checked = settings.sound;
   requestAnimationFrame(() => s.classList.add('open'));
 }
 function closeSheet() {
@@ -776,13 +770,6 @@ for (const s of document.querySelectorAll('.sheet')) {
     if (e.target === s || e.target.closest('[data-close]')) { sfx.tap(); closeSheet(); }
   });
 }
-$('settings-help').addEventListener('click', () => openSheet('help'));
-$('sound-toggle').addEventListener('change', (e) => {
-  settings.sound = e.target.checked;
-  setSound(settings.sound);
-  save('settings', { v: 1, sound: settings.sound });
-  if (settings.sound) sfx.tap();
-});
 
 // =====================================================================
 // キーボード（PC 用の追加）
