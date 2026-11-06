@@ -1,7 +1,7 @@
 {
   "id": "./",
-  "name": "four-digits — 4つの数字で目標を作る",
-  "short_name": "four-digits",
+  "name": "OCCAM — テンパズル：4つの数字で1〜100を最短の式で",
+  "short_name": "OCCAM",
   "description": "4つの数字を順番どおりに使い、目標の数を作る数字パズル。",
   "start_url": "./",
   "scope": "./",
