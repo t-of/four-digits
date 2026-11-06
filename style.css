@@ -198,3 +198,26 @@ button { font: inherit; color: inherit; }
 .mk span { word-break: break-all; min-width: 0; }
 .mk small { color: var(--accent); font-size: 12px; }
 .info__mine { color: var(--muted); font-size: 13px; word-break: break-all; padding: 0 8px; }
+
+/* ---- ホーム ---- */
+.card-auto, .card-daily {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; width: 100%;
+  border: 1px solid var(--line); background: var(--panel); border-radius: 16px; cursor: pointer; color: var(--fg); padding: 16px;
+}
+.card-auto { flex: 3; min-height: 0; background: #4a3d12; border-color: var(--accent); }
+.card-daily { flex: 2; min-height: 0; }
+.card-auto small, .card-daily small { font-size: 14px; color: var(--muted); }
+.lv { display: flex; align-items: center; gap: 8px; }
+.lv i { width: 22px; height: 22px; border-radius: 50%; background: rgba(255, 255, 255, 0.15); }
+.lv i.on { background: var(--accent); }
+.lv em { font-style: normal; font-size: 22px; font-weight: 700; margin-left: 6px; color: var(--accent); }
+.card-auto__go { font-size: 26px; font-weight: 700; background: var(--accent); color: #1a1500; border-radius: 12px; padding: 12px 28px; }
+.card-daily b { font-size: 28px; }
+.card-daily__st { font-size: 22px; color: var(--muted); letter-spacing: 0.1em; }
+.card-daily__st.done { color: var(--accent); }
+.card-daily__streak { font-size: 13px; color: var(--muted); min-height: 1em; }
+.home-sub { display: flex; gap: 10px; }
+.home-sub .back { flex: 1; }
+.head__target small { font-size: 12px; color: var(--muted); margin-right: 8px; }
+.giveup { margin-top: 6px; }
+.jump .back { white-space: nowrap; }

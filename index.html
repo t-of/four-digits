@@ -41,12 +41,31 @@
     </header>
 
     <section class="stage" id="stage">
-      <!-- 1. 4 桁の一覧 -->
-      <div class="screen" id="s-list">
+      <!-- ホーム -->
+      <div class="screen" id="s-home">
+        <button class="card-auto" id="auto-btn">
+          <small>おまかせ</small>
+          <span class="lv" id="auto-lv"></span>
+          <span class="card-auto__go">次の 1 問 ›</span>
+        </button>
+        <button class="card-daily" id="daily-btn">
+          <small>今日の 1 問</small>
+          <b id="daily-date"></b>
+          <span class="card-daily__st" id="daily-st"></span>
+          <span class="card-daily__streak" id="daily-streak"></span>
+        </button>
+        <div class="home-sub">
+          <button class="back" id="free-btn">フリー</button>
+          <button class="back" id="zukan-btn">図鑑</button>
+        </div>
+      </div>
+
+      <!-- 1. 4 桁の一覧（フリー） -->
+      <div class="screen" id="s-list" hidden>
         <div class="jump">
+          <button class="back" id="list-back">‹ ホーム</button>
           <input id="jump" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="4桁を打って飛ぶ" autocomplete="off" aria-label="4桁を打って飛ぶ">
           <span class="jump__sum" id="list-sum"></span>
-          <button class="pill" id="zukan-btn">図鑑</button>
         </div>
         <div class="list" id="list-scroll">
           <div class="list__spacer" id="list-spacer"><div class="list__rows" id="list-rows"></div></div>
@@ -56,7 +75,7 @@
       <!-- 図鑑 -->
       <div class="screen" id="s-zukan" hidden>
         <div class="head">
-          <button class="back" id="zukan-back">‹ 一覧</button>
+          <button class="back" id="zukan-back">‹ ホーム</button>
           <div class="tabs" id="tabs">
             <button class="tab on" data-tab="digits">4桁</button>
             <button class="tab" data-tab="numbers">数</button>
@@ -79,7 +98,7 @@
       <div class="screen" id="s-puzzle" hidden>
         <div class="head">
           <button class="back" id="puzzle-back">‹ 目標</button>
-          <div class="head__target"><b id="puzzle-target"></b> を作る</div>
+          <div class="head__target"><small id="puzzle-tag"></small><b id="puzzle-target"></b> を作る</div>
         </div>
         <!-- 表示部分（数字・式・値）はキーの上の空きいっぱいに広げ、中身は上下の真ん中に -->
         <div class="display">
@@ -89,6 +108,7 @@
           <div class="info__value" id="value"></div>
           <div class="info__count" id="count"></div>
           <div class="info__mine" id="mine"></div>
+          <button class="pill giveup" id="giveup" hidden>あきらめる</button>
         </div>
         </div>
         <!-- 入力は画面の下に寄せる（親指が届く位置） -->
@@ -130,7 +150,7 @@
     </section>
 
     <footer class="credit">
-      <a href="/">T.OF...</a> ・ <a href="https://t-of.github.io/contact/">問い合わせ</a> ・ <span class="ver">v10</span>
+      <a href="/">T.OF...</a> ・ <a href="https://t-of.github.io/contact/">問い合わせ</a> ・ <span class="ver">v11</span>
     </footer>
   </main>
 

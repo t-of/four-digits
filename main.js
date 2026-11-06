@@ -23,14 +23,16 @@ if ('serviceWorker' in navigator) {
 const $ = (id) => document.getElementById(id);
 const pad4 = (n) => String(n).padStart(4, '0');
 
-// ---- 最小記号数の表（data/min.bin。255 は未計算）。星の計算に使うので先に読む ----
+// ---- 問題の表（data/puzzle.bin。1 問 1 バイト、添え字 = 4 桁×100 + 目標−1）。星の計算に使うので先に読む ----
+// 下 5 ビット = 最小記号数（255 は未計算）、上 3 ビット = 難しさ 1〜5
 let minTable = null;
 try {
-  const r = await fetch('./data/min.bin');
+  const r = await fetch('./data/puzzle.bin');
   const b = await r.arrayBuffer();
   if (b.byteLength === 1000000) minTable = new Uint8Array(b);
-} catch { /* 読めなければ未計算として遊べる */ }
-const minOf = (digits, t) => (minTable ? minTable[Number(digits) * 100 + t - 1] : 255);
+} catch { /* 読めなければ未計算として遊べる（おまかせ・今日の 1 問は難しさの区別なし） */ }
+const minOf = (digits, t) => (minTable ? minTable[Number(digits) * 100 + t - 1] & 31 : 255);
+const lvOf = (n, t) => (minTable ? minTable[n * 100 + t - 1] >> 5 : 0);
 
 // ---- 記録: four-digits.best = { v: 2, s: { "0123": { "45": [k, "式"] } } } ----
 // 遊んだ問題だけを持つ。k は式の記号数、式は !{N} を含む打った形のまま。
@@ -74,7 +76,7 @@ function saveBest(digits, t, k, expr) {
 const totalStars = () => sums.reduce((a, b) => a + b, 0);
 
 // ---- 画面の切り替え ----
-const screens = { list: $('s-list'), zukan: $('s-zukan'), targets: $('s-targets'), puzzle: $('s-puzzle') };
+const screens = { home: $('s-home'), list: $('s-list'), zukan: $('s-zukan'), targets: $('s-targets'), puzzle: $('s-puzzle') };
 function show(name) {
   for (const [k, el] of Object.entries(screens)) el.hidden = k !== name;
 }
@@ -170,6 +172,7 @@ function showList() {
 
 // ================= 2. 目標の一覧 =================
 let digits = '0000';
+let mode = 'free';   // 'free' | 'auto' | 'daily'
 
 let from = 'list';   // 目標の一覧に来た場所（戻り先）
 function openTargets(d, origin = 'list') {
@@ -211,13 +214,17 @@ const isDigit = (t) => /^\d$/.test(t);
 const canDelete = () => cur > 0 && !isDigit(toks[cur - 1]);
 const startToks = () => [...digits];
 
-function openPuzzle(t) {
+function openPuzzle(t, md = 'free') {
+  mode = md;
   target = t;
   toks = startToks(); cur = 1;   // 1 つ目と 2 つ目の数字の間から始める
   solved = false; locked = null; clearTimeout(pauseTimer);
   resetView();
   show('puzzle');
   $('puzzle-target').textContent = t;
+  $('puzzle-tag').textContent = md === 'daily' ? '今日の 1 問' : md === 'auto' ? `Lv ${auto.L}` : '';
+  $('puzzle-back').textContent = md === 'free' ? '‹ 目標' : '‹ ホーム';
+  $('giveup').hidden = md !== 'auto';
   $('nsel').hidden = true;
   showMine();
   update();
@@ -286,9 +293,18 @@ function finish(k) {
   if (prev > got) sub += `${sub ? ' ・ ' : ''}この問題の最高は ${'★'.repeat(bestStars)}`;
   $('r-sub').textContent = sub;
   $('r-sub').classList.toggle('record', m < 255 && k < m);
-  const nt = nextOpen();
-  $('r-next').textContent = nt ? '次へ' : '制覇！ 目標の一覧へ';
-  $('r-next').dataset.t = nt;
+  if (mode === 'auto') {
+    autoSolved(got);
+    $('r-next').textContent = '次の 1 問';
+  } else if (mode === 'daily') {
+    if (bestStars > (daily[dailyDate] || 0)) { daily[dailyDate] = bestStars; save('daily', daily); }
+    $('r-next').textContent = 'ホームへ';
+  } else {
+    const nt = nextOpen();
+    $('r-next').textContent = nt ? '次へ' : '制覇！ 目標の一覧へ';
+    $('r-next').dataset.t = nt;
+  }
+  $('giveup').hidden = true;
   $('r-retry').hidden = got >= 3;
   pauseTimer = setTimeout(() => { $('keys').hidden = true; $('result').hidden = false; }, 800);
 }
@@ -347,8 +363,11 @@ function closeN() { $('nsel').hidden = true; $('keys').hidden = false; }
 $('n-cancel').addEventListener('click', closeN);
 $('n-ok').addEventListener('click', () => { const n = getN(); closeN(); press(`!{${n}}`); });
 
-$('puzzle-back').addEventListener('click', () => { resetView(); showTargets(); });
+$('puzzle-back').addEventListener('click', () => { resetView(); if (mode === 'free') showTargets(); else showHome(); });
+$('giveup').addEventListener('click', () => { autoGiveUp(); openAuto(); });
 $('r-next').addEventListener('click', () => {
+  if (mode === 'auto') return openAuto();
+  if (mode === 'daily') { resetView(); return showHome(); }
   const nt = Number($('r-next').dataset.t);
   resetView();
   if (nt) openPuzzle(nt); else showTargets();
@@ -428,6 +447,122 @@ $('tabs').addEventListener('click', (e) => {
   tab = b.dataset.tab; numPick = 0; showZukan();
 });
 $('zukan-btn').addEventListener('click', showZukan);
-$('zukan-back').addEventListener('click', showList);
+$('zukan-back').addEventListener('click', () => showHome());
+$('list-back').addEventListener('click', () => showHome());
+$('free-btn').addEventListener('click', showList);
 
-showList();
+// ================= ホーム・おまかせ・今日の 1 問 =================
+// four-digits.auto = { v: 1, L: 難しさ, streak: ★3 の連続, recent: [[4桁, 目標], …新しい順に最大 30], cur: [4桁, 目標] | null }
+const RECENT_DIGITS = 30, RECENT_TARGET = 5;
+let auto = { L: 1, streak: 0, recent: [], cur: null };
+{
+  const d = load('auto', null);
+  if (d && d.v === 1 && d.L >= 1 && d.L <= 5 && Array.isArray(d.recent)) {
+    auto = { L: d.L, streak: d.streak | 0, recent: d.recent.slice(0, RECENT_DIGITS), cur: Array.isArray(d.cur) ? d.cur : null };
+  }
+}
+const saveAuto = () => save('auto', { v: 1, ...auto });
+// four-digits.daily = { "2026-11-06": 星, … }（解いた日だけ。その日の最高）
+const daily = (() => { const d = load('daily', {}); return d && typeof d === 'object' && !Array.isArray(d) ? d : {}; })();
+
+const two = (n) => String(n).padStart(2, '0');
+const dateKey = (d) => `${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())}`;
+let dailyDate = dateKey(new Date());   // 今開いている「今日の 1 問」の日付
+
+// 日付の文字列から決まった乱数列を作る（全端末で同じ結果。FNV-1a → mulberry32）
+function seeded(str) {
+  let h = 2166136261;
+  for (const ch of str) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); }
+  let a = h >>> 0;
+  return () => {
+    a = (a + 0x6D2B79F5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+// 難しさ 3 か 4 の問題を、条件に合うまで引く。[4桁の数, 目標]
+function dailyPuzzle(key) {
+  const rnd = seeded(`four-digits:${key}`);
+  for (;;) {
+    const i = Math.floor(rnd() * 1000000);
+    const n = Math.floor(i / 100), t = (i % 100) + 1;
+    if (!minTable) return [n, t];
+    const lv = lvOf(n, t);
+    if (lv === 3 || lv === 4) return [n, t];
+  }
+}
+
+// 続けて解いた日数。今日まだなら昨日までの連続を数える
+function dailyStreak() {
+  const d = new Date();
+  if (!daily[dateKey(d)]) d.setDate(d.getDate() - 1);
+  let n = 0;
+  while (daily[dateKey(d)] > 0) { n++; d.setDate(d.getDate() - 1); }
+  return n;
+}
+
+function showHome() {
+  show('home');
+  $('auto-lv').innerHTML = [1, 2, 3, 4, 5].map((i) => `<i class="${i <= auto.L ? 'on' : ''}"></i>`).join('') + `<em>Lv ${auto.L}</em>`;
+  dailyDate = dateKey(new Date());
+  const [, mo, da] = dailyDate.split('-');
+  $('daily-date').textContent = `${Number(mo)}月${Number(da)}日`;
+  const s = daily[dailyDate] || 0;
+  $('daily-st').textContent = s ? `${'★'.repeat(s)}${'☆'.repeat(3 - s)}` : '☆☆☆';
+  $('daily-st').classList.toggle('done', s > 0);
+  const st = dailyStreak();
+  $('daily-streak').textContent = st ? `${st} 日連続` : '';
+}
+
+$('daily-btn').addEventListener('click', () => {
+  dailyDate = dateKey(new Date());
+  const [n, t] = dailyPuzzle(dailyDate);
+  digits = pad4(n);
+  openPuzzle(t, 'daily');
+});
+
+// 次のおまかせの問題を選ぶ。[4桁の数, 目標]
+function pickAuto() {
+  const rd = auto.recent.slice(0, RECENT_DIGITS).map((r) => r[0]);
+  const rt = auto.recent.slice(0, RECENT_TARGET).map((r) => r[1]);
+  for (let tries = 0; tries < 5000; tries++) {
+    const i = Math.floor(Math.random() * 1000000);
+    const n = Math.floor(i / 100), t = (i % 100) + 1;
+    if (minTable && lvOf(n, t) !== auto.L) continue;
+    if (rd.includes(n) || rt.includes(t) || starsOf(pad4(n), t) >= 3) continue;
+    return [n, t];
+  }
+  return [Math.floor(Math.random() * 10000), 1 + Math.floor(Math.random() * 100)];
+}
+
+function openAuto() {
+  if (!auto.cur) { auto.cur = pickAuto(); saveAuto(); }
+  digits = pad4(auto.cur[0]);
+  openPuzzle(auto.cur[1], 'auto');
+}
+function autoPush() {
+  auto.recent.unshift(auto.cur);
+  auto.recent.length = Math.min(auto.recent.length, RECENT_DIGITS);
+  auto.cur = null;
+}
+// 解けた: ★3 が 2 問続けば L+1、★1 なら L−1、★2 はそのまま（連続は切れる）
+function autoSolved(got) {
+  if (!auto.cur) return;   // 「もっと短く」の 2 回目以降は数えない
+  if (got >= 3) {
+    auto.streak++;
+    if (auto.streak >= 2) { auto.L = Math.min(5, auto.L + 1); auto.streak = 0; }
+  } else {
+    auto.streak = 0;
+    if (got <= 1) auto.L = Math.max(1, auto.L - 1);
+  }
+  autoPush(); saveAuto();
+}
+function autoGiveUp() {
+  auto.L = Math.max(1, auto.L - 1); auto.streak = 0;
+  autoPush(); saveAuto();
+}
+$('auto-btn').addEventListener('click', openAuto);
+
+showHome();
