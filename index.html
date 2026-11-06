@@ -3,7 +3,18 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#0d1017">
+  <meta name="theme-color" content="#f6f4ef" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0d1017" media="(prefers-color-scheme: dark)">
+  <script>
+    // 見比べ用: ?theme=light|dark で端末の設定を上書き（保存しない）。light/dark 以外は無視
+    (function () {
+      var t = new URLSearchParams(location.search).get('theme');
+      if (t !== 'light' && t !== 'dark') return;
+      document.documentElement.setAttribute('data-theme', t);
+      var c = t === 'light' ? '#f6f4ef' : '#0d1017';
+      document.querySelectorAll('meta[name="theme-color"]').forEach(function (m) { m.setAttribute('content', c); m.removeAttribute('media'); });
+    })();
+  </script>
   <meta name="description" content="4つの数字を並んだ順のまま使い、1〜100を作るテンパズル。記号が少ないほど星が増える。いちばん短い式を探す数字パズル。">
   <title>OCCAM — テンパズル：4つの数字で1〜100を最短の式で</title>
 
@@ -88,7 +99,7 @@
           <button class="pill" data-wak="install" hidden>アプリにする</button>
           <button class="pill" data-wak="share">共有</button>
         </div>
-        <div><a href="/">T.OF...</a> ・ <a href="https://t-of.github.io/contact/">問い合わせ</a> ・ <span class="ver">v15</span></div>
+        <div><a href="/">T.OF...</a> ・ <a href="https://t-of.github.io/contact/">問い合わせ</a> ・ <span class="ver">v16</span></div>
       </footer>
     </section>
 
