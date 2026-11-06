@@ -114,7 +114,7 @@ button { font: inherit; color: inherit; }
 .expr {
   min-height: 64px; padding: 10px 12px; border: 1px solid var(--line); background: var(--panel); border-radius: 10px;
   font-size: 24px; line-height: 1.35; word-break: break-all; font-variant-numeric: tabular-nums;
-  display: flex; align-items: flex-end; justify-content: flex-end; text-align: right; cursor: text;
+  display: flex; align-items: center; justify-content: center; text-align: center; cursor: text;
 }
 .expr__in { max-width: 100%; }
 /* カーソル（タップや ◀ ▶ で動かす） */
