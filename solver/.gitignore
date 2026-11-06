@@ -1,0 +1,4 @@
+# 計算の出力は大きいので入れない（表は ../data/min.bin に写してある）
+results/
+src/minsym
+hakusan/*.tgz
