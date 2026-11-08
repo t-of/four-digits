@@ -885,6 +885,10 @@ code {
   .caret::after { animation: none; }
 }
 
+#theme-btn .moon { display: inline; }
+#theme-btn .sun { display: none; }
+#theme-btn.is-dark .moon { display: none; }
+#theme-btn.is-dark .sun { display: inline; }
 #sound-btn .off { display: none; }
 #sound-btn.muted .on { display: none; }
 #sound-btn.muted .off { display: inline; }

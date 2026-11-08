@@ -294,6 +294,30 @@ function renderSound() {
   b.classList.toggle('muted', !settings.sound);
 }
 renderSound();
+
+// ---- 配色: four-digits.theme = "light" | "dark"（押すまでは保存せず端末の設定に合わせる） ----
+const darkNow = () => {
+  const t = document.documentElement.getAttribute('data-theme');
+  return t ? t === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+};
+function applyTheme(t) {
+  document.documentElement.setAttribute('data-theme', t);
+  const c = t === 'light' ? '#f6f4ef' : '#0d1017';
+  for (const m of document.querySelectorAll('meta[name="theme-color"]')) { m.setAttribute('content', c); m.removeAttribute('media'); }
+}
+// ボタンには「押すとなる配色」の絵を出す（暗いときは ☀、明るいときは ☾）
+function renderTheme() {
+  const dark = darkNow();
+  const b = $('theme-btn');
+  b.classList.toggle('is-dark', dark);
+  b.setAttribute('aria-label', dark ? '明るい配色にする' : '暗い配色にする');
+}
+renderTheme();
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', renderTheme);
+$('theme-btn').addEventListener('click', () => {
+  const t = darkNow() ? 'light' : 'dark';
+  applyTheme(t); save('theme', t); renderTheme(); sfx.tap();
+});
 $('sound-btn').addEventListener('click', () => {
   settings.sound = !settings.sound;
   setSound(settings.sound);

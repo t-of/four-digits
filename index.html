@@ -6,9 +6,10 @@
   <meta name="theme-color" content="#f6f4ef" media="(prefers-color-scheme: light)">
   <meta name="theme-color" content="#0d1017" media="(prefers-color-scheme: dark)">
   <script>
-    // 見比べ用: ?theme=light|dark で端末の設定を上書き（保存しない）。light/dark 以外は無視
+    // 配色: ホームの ☀/☾ で選んだもの（four-digits.theme）。?theme=light|dark は見比べ用で保存しない。無ければ端末の設定
     (function () {
       var t = new URLSearchParams(location.search).get('theme');
+      if (t !== 'light' && t !== 'dark') { try { t = JSON.parse(localStorage.getItem('four-digits.theme')); } catch (e) { t = null; } }
       if (t !== 'light' && t !== 'dark') return;
       document.documentElement.setAttribute('data-theme', t);
       var c = t === 'light' ? '#f6f4ef' : '#0d1017';
@@ -48,6 +49,9 @@
     <!-- ========== ホーム ========== -->
     <section class="screen home" id="s-home">
       <div class="home__top">
+        <button class="icon-btn" id="theme-btn" aria-label="明るい配色にする">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><g class="sun"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/></g><path class="moon" d="M19 14.5A7.5 7.5 0 019.5 5a7.5 7.5 0 109.5 9.5z"/></svg>
+        </button>
         <button class="icon-btn" id="sound-btn" aria-label="効果音" aria-pressed="true">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h3.5L12 6v12l-4.5-3.5H4z"/><path class="on" d="M15.5 9a4 4 0 010 6M18 6.5a7.5 7.5 0 010 11"/><path class="off" d="M16 9.5l5 5M21 9.5l-5 5"/></svg>
         </button>
@@ -99,7 +103,7 @@
           <button class="pill" data-wak="install" hidden>アプリにする</button>
           <button class="pill" data-wak="share">共有</button>
         </div>
-        <div><a href="/">T.OF...</a> ・ <a href="https://t-of.github.io/contact/">問い合わせ</a> ・ <span class="ver">v19</span></div>
+        <div><a href="/">T.OF...</a> ・ <a href="https://t-of.github.io/contact/">問い合わせ</a> ・ <span class="ver">v20</span></div>
       </footer>
     </section>
 
