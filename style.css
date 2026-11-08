@@ -633,6 +633,12 @@ code {
 .result .btn--primary { min-height: 56px; font-size: var(--fs-2); margin-top: 8px; }
 .result__row { display: flex; gap: 8px; }
 .result__row .btn { flex: 1; padding: 0 8px; font-size: var(--fs-2); }
+/* ★3 未満の「もっと短く」: 操作できるものの色（青）で縁どって、次へと並ぶ選択肢に見せる */
+.btn--ink { color: var(--ink); border-color: var(--ink); background: var(--ink-dim); }
+
+/* はじめての 1 問: 押すキーを青い輪で示す（動きを減らす設定でも輪は残る） */
+.key.hint { border-color: var(--ink); box-shadow: 0 0 0 2px var(--ink); animation: hint 1.4s ease-in-out infinite; }
+@keyframes hint { 50% { box-shadow: 0 0 0 6px var(--ink-dim), 0 0 0 2px var(--ink); } }
 
 /* =====================================================================
    フリー

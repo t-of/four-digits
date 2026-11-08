@@ -131,8 +131,11 @@ function pickAuto() {
   }
   return [Math.floor(Math.random() * 10000), 1 + Math.floor(Math.random() * 100)];
 }
+// はじめての人の最初の 1 問は、+ を 1 つ差し込めば解ける問題（20+27=47）。遊び方を読ませずに触って覚える
+const TUT = [2027, 47];
+const needTut = () => !load('tut', false) && totals().played === 0;
 function ensureAuto() {
-  if (!auto.cur) { auto.cur = pickAuto(); saveAuto(); }
+  if (!auto.cur) { auto.cur = needTut() ? TUT : pickAuto(); saveAuto(); }
   return auto.cur;
 }
 function autoPush() {
@@ -313,6 +316,7 @@ const MAXLEN = 60;
 let digits = '0000';
 let mode = 'free';   // 'free' | 'auto' | 'daily'
 let target = 1, toks = [], cur = 0, solved = false, popAt = -1;
+let tut = false;     // はじめての 1 問の最中（+ キーを光らせ、カーソルを 20|27 に置く）
 let locked = null;   // 「もっと短く」で戻ったときの式。同じ式のままでは解けた扱いにしない
 let timers = [];
 const later = (fn, ms) => timers.push(setTimeout(fn, ms));
@@ -325,8 +329,10 @@ const canDelete = () => cur > 0 && !isDigit(toks[cur - 1]);
 function openPuzzle(t, md = 'free') {
   mode = md;
   target = t;
-  toks = [...digits]; cur = 1; popAt = -1;
+  tut = md === 'auto' && digits === pad4(TUT[0]) && t === TUT[1] && needTut();
+  toks = [...digits]; cur = tut ? 2 : 1; popAt = -1;
   solved = false; locked = null;
+  $('key-plus').classList.toggle('hint', tut);
   resetPad();
   show('puzzle');
   $('puzzle-target').textContent = t;
@@ -336,7 +342,6 @@ function openPuzzle(t, md = 'free') {
   $('expr').classList.remove('won');
   showMine();
   update(true);
-  if (!load('help', false)) openSheet('help');
 }
 
 function showMine() {
@@ -431,6 +436,7 @@ let lastShare = '';
 // 解けたら: 式を残して値を光らせ、間を置いてから星を 1 つずつ押す
 function finish(k) {
   solved = true;
+  if (tut) { tut = false; save('tut', true); $('key-plus').classList.remove('hint'); }
   const m = minOf(digits, target);
   const got = starsFor(k, m);
   const bestStars = saveBest(digits, target, k, text());
@@ -450,7 +456,7 @@ function finish(k) {
   const rs = $('r-sub');
   rs.textContent = sub;
   rs.classList.toggle('record', record);
-    $('r-retry').hidden = got >= 3;
+  $('r-retry').hidden = got >= 3;
   $('r-share').hidden = mode !== 'daily';
   $('r-daily').hidden = mode !== 'daily';
   const next = $('r-next');
@@ -809,4 +815,3 @@ document.addEventListener('keydown', (e) => {
 });
 
 showHome();
-if (!load('help', false)) openSheet('help');
