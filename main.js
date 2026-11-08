@@ -223,12 +223,12 @@ function show(name) {
 }
 
 let toastTimer = 0;
-function toast(msg) {
+function toast(msg, ms = 1800) {
   const t = $('toast');
   t.textContent = msg;
   t.hidden = false;
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => { t.hidden = true; }, 1800);
+  toastTimer = setTimeout(() => { t.hidden = true; }, ms);
 }
 
 // =====================================================================
@@ -410,11 +410,11 @@ function update(first = false) {
     val.innerHTML = `<span class="value__eq">=</span>${formatValue(a.value)}`;
     if (isTarget(a.value, target)) val.classList.add('hit');
   } else if (a.status !== 'empty') {
-    val.textContent = '—';
+    val.innerHTML = '<span class="value__eq">=</span>?';
     val.classList.add('dim');
   }
   const k = a.symbols;
-  $('count').textContent = k;
+  $('count').textContent = `記号 ${k}`;
   if (!first && !solved && text() !== locked && a.status === 'ok' && a.complete && isTarget(a.value, target)) finish(k);
 }
 
@@ -445,7 +445,7 @@ function finish(k) {
 
   // 結果パネルの中身
   $('r-stars').innerHTML = [0, 1, 2].map((i) => `<span class="st ${i < got ? 'on' : 'off'}">★</span>`).join('');
-  $('r-text').textContent = k;
+  $('r-text').textContent = got >= 3 || !(m < 255) ? `記号 ${k}` : `記号 ${k} ・ 最短 ${m}`;
   let sub = record ? '最小を更新！' : '';
   const rs = $('r-sub');
   rs.textContent = sub;
@@ -494,6 +494,7 @@ function resetPad() {
 
 function press(tok) {
   if (solved) return;
+  if (cur === 0 && '×÷^).'.includes(tok)) { sfx.nope(); return; }
   if (text().length + tok.length > MAXLEN) { sfx.nope(); return; }
   toks.splice(cur, 0, tok);
   popAt = cur;
@@ -555,7 +556,7 @@ $('expr').addEventListener('click', (e) => {
 
 // ---- N 重階乗の N ----
 const nInput = $('n-input');
-const getN = () => Math.max(1, Math.min(999, parseInt(nInput.value, 10) || 1));
+const getN = () => Math.max(1, Math.min(99, parseInt(nInput.value, 10) || 1));
 function renderN() {
   const n = getN();
   $('n-eg').textContent = `x!⁽${n}⁾ = x × (x−${n}) × (x−${2 * n}) × …`;
@@ -568,9 +569,9 @@ $('n-chips').addEventListener('click', (e) => {
 });
 function openN() { $('keys').hidden = true; $('nsel').hidden = false; renderN(); sfx.tap(); }
 function closeN() { $('nsel').hidden = true; $('keys').hidden = false; }
-nInput.addEventListener('input', () => { nInput.value = nInput.value.replace(/\D/g, '').slice(0, 3); renderN(); });
+nInput.addEventListener('input', () => { nInput.value = nInput.value.replace(/\D/g, '').slice(0, 2); renderN(); });
 $('n-minus').addEventListener('click', () => { nInput.value = Math.max(1, getN() - 1); sfx.move(); renderN(); });
-$('n-plus').addEventListener('click', () => { nInput.value = Math.min(999, getN() + 1); sfx.move(); renderN(); });
+$('n-plus').addEventListener('click', () => { nInput.value = Math.min(99, getN() + 1); sfx.move(); renderN(); });
 $('n-cancel').addEventListener('click', () => { closeN(); sfx.del(); });
 $('n-ok').addEventListener('click', () => { const n = getN(); closeN(); press(n === 1 ? '!' : `!{${n}}`); });
 
@@ -581,7 +582,7 @@ function leavePuzzle() {
 }
 $('puzzle-back').addEventListener('click', () => { sfx.tap(); leavePuzzle(); });
 $('puzzle-help').addEventListener('click', () => openSheet('help'));
-$('giveup').addEventListener('click', () => { sfx.del(); autoGiveUp(); toast(`Lv ${auto.L}`); openAuto(); });
+$('giveup').addEventListener('click', () => { const was = auto.L; sfx.del(); autoGiveUp(); toast(auto.L === was ? 'パス' : `パス ・ Lv ${was} → ${auto.L}`, 2400); openAuto(); });
 $('r-next').addEventListener('click', () => {
   sfx.tap();
   if (mode === 'auto' || mode === 'daily') return openAuto();
@@ -620,7 +621,7 @@ function renderFree() {
     const s = starSum(pick);
     let n3 = 0;
     for (let t = 1; t <= 100; t++) if (starsOf(pick, t) === 3) n3++;
-    pv.innerHTML = `${miniMap(pick)}<span class="free__nums"><b>★ ${s}</b> / 300<br>★3 ${n3} / 100</span>`;
+    pv.innerHTML = `${miniMap(pick)}<span class="free__nums"><b>★ ${s}</b> / 300<br><span class="b3">★★★</span> ${n3} / 100</span>`;
     pv.classList.add('ready');
   } else {
     pv.innerHTML = '';
@@ -669,7 +670,7 @@ function openBoard(d, from = 'free') {
   $('board-grid').innerHTML = html;
   $('board-bar').style.width = `${(s / 300) * 100}%`;
   $('board-stars').innerHTML = `<b>★ ${s}</b> / 300`;
-  $('board-full').textContent = n3 === 100 ? '制覇！' : `★3 ${n3} / 100`;
+  $('board-full').innerHTML = n3 === 100 ? '制覇！' : `<span class="b3">★★★</span> ${n3} / 100`;
 }
 $('board-grid').addEventListener('click', (e) => {
   const b = e.target.closest('[data-t]');
