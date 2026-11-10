@@ -313,7 +313,6 @@ function showReward(gain) {
     if (!reduceMotion) flyCoin(a, b);
     later(() => {
       const v = from + Math.round((gain * (i + 1)) / n);
-      $('r-coin-n').textContent = v;
       $('p-coin-n').textContent = v;
       pc.classList.remove('bump'); void pc.offsetWidth; pc.classList.add('bump');
       sfx.coinTick(i);
@@ -699,7 +698,7 @@ function finish(k) {
   $('r-retry').hidden = got >= 3;
   const rc = $('r-coin');
   rc.hidden = !reward; rc.classList.remove('in');
-  if (reward) { $('r-coin-n').textContent = coins.n - reward; $('p-coin-n').textContent = coins.n - reward; $('r-coin-plus').textContent = `+${reward}`; }
+  if (reward) { $('r-coin-n').textContent = `×${reward}`; $('p-coin-n').textContent = coins.n - reward; }
   $('r-share').hidden = mode !== 'daily';
   $('r-daily').hidden = mode !== 'daily';
   const next = $('r-next');
