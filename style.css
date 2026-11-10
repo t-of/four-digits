@@ -988,8 +988,8 @@ code {
 .shopcard[data-font="font-seg"] .shopcard__eg { font-size: 24px; }
 .shop__grid + .shop__grid { margin-top: 10px; }
 .shopcard[data-pal] { background: var(--bg); color: var(--tx); }
-.shopcard__eg--pal { display: flex; align-items: center; gap: 3px; font-size: 20px; }
-.shopcard__eg--pal b { display: grid; place-items: center; width: 24px; height: 32px; background: var(--s2); border: 1px solid var(--line2); border-radius: 6px; font-weight: 800; }
+.shopcard__eg--pal { display: flex; align-items: center; gap: 1px; font-size: 24px; }
+.shopcard__eg--pal b { font-weight: 800; }
 .shopcard__eg--pal i { font-style: normal; font-weight: 800; color: var(--ink); padding: 0 2px; }
 :root[data-pal] #theme-btn { display: none; }
 .shopcard__price { position: absolute; right: 10px; bottom: 7px; display: flex; align-items: center; gap: 3px; font-size: var(--fs-1); color: var(--tx2); font-variant-numeric: tabular-nums; }
