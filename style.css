@@ -974,6 +974,12 @@ code {
 .shopcard.poor { opacity: 0.55; }
 .shopcard__eg { font-size: 30px; font-weight: 800; letter-spacing: 0.04em; line-height: 1; }
 .shopcard[data-font="font-seg"] .shopcard__eg { font-size: 24px; }
+.shop__grid + .shop__grid { margin-top: 10px; }
+.shopcard[data-pal] { background: var(--bg); color: var(--tx); }
+.shopcard__eg--pal { display: flex; align-items: center; gap: 3px; font-size: 20px; }
+.shopcard__eg--pal b { display: grid; place-items: center; width: 24px; height: 32px; background: var(--s2); border: 1px solid var(--line2); border-radius: 6px; font-weight: 800; }
+.shopcard__eg--pal i { font-style: normal; font-weight: 800; color: var(--ink); padding: 0 2px; }
+:root[data-pal] #theme-btn { display: none; }
 .shopcard__price { position: absolute; right: 10px; bottom: 7px; display: flex; align-items: center; gap: 3px; font-size: var(--fs-1); color: var(--tx2); font-variant-numeric: tabular-nums; }
 .shopcard__price .coin { width: 14px; height: 14px; }
 .shopcard.ask .shopcard__price { color: var(--ink); }
@@ -985,7 +991,8 @@ code {
    ===================================================================== */
 
 /* 黒板（深い緑の地、チョークの白・黄・水色） */
-:root[data-pal="pal-chalk"]:is(*, [data-theme]) {
+:root[data-pal="pal-chalk"]:is(*, [data-theme]),
+.shopcard[data-pal="pal-chalk"] {
   --bg: #12291d;
   --bg2: #153123;
   --s1: #1b3a2a;
@@ -1025,7 +1032,8 @@ code {
 }
 
 /* 方眼（クリームの地に薄い方眼、紺のインク、朱、青） */
-:root[data-pal="pal-grid"]:is(*, [data-theme]) {
+:root[data-pal="pal-grid"]:is(*, [data-theme]),
+.shopcard[data-pal="pal-grid"] {
   --bg: #f8f4e2;
   --bg2: #f3eed9;
   --s1: #fffef6;
@@ -1065,7 +1073,8 @@ code {
 }
 
 /* 青写真（紺の地、白い線、明るい黄、水色） */
-:root[data-pal="pal-print"]:is(*, [data-theme]) {
+:root[data-pal="pal-print"]:is(*, [data-theme]),
+.shopcard[data-pal="pal-print"] {
   --bg: #0c2552;
   --bg2: #0f2b5e;
   --s1: #143368;

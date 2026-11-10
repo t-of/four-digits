@@ -10,9 +10,11 @@
     (function () {
       var t = new URLSearchParams(location.search).get('theme');
       if (t !== 'light' && t !== 'dark') { try { t = JSON.parse(localStorage.getItem('four-digits.theme')); } catch (e) { t = null; } }
-      if (t !== 'light' && t !== 'dark') return;
-      document.documentElement.setAttribute('data-theme', t);
-      var c = t === 'light' ? '#f6f4ef' : '#0d1017';
+      var bg = { 'pal-chalk': '#12291d', 'pal-grid': '#f8f4e2', 'pal-print': '#0c2552' }, p = null;
+      try { var d = JSON.parse(localStorage.getItem('four-digits.shop')); if (d && d.v === 1 && bg[d.pal] && d.owned.indexOf(d.pal) >= 0) p = d.pal; } catch (e) {}
+      if (p) document.documentElement.setAttribute('data-pal', p);
+      if (t !== 'light' && t !== 'dark') { if (!p) return; } else document.documentElement.setAttribute('data-theme', t);
+      var c = p ? bg[p] : t === 'light' ? '#f6f4ef' : '#0d1017';
       document.querySelectorAll('meta[name="theme-color"]').forEach(function (m) { m.setAttribute('content', c); m.removeAttribute('media'); });
     })();
   </script>
@@ -110,7 +112,7 @@
           <button class="pill" data-wak="install" hidden>アプリにする</button>
           <button class="pill" data-wak="share">共有</button>
         </div>
-        <div><a href="/">T.OF...</a> ・ <a href="https://t-of.github.io/contact/">問い合わせ</a> ・ <span class="ver">v30</span></div>
+        <div><a href="/">T.OF...</a> ・ <a href="https://t-of.github.io/contact/">問い合わせ</a> ・ <span class="ver">v31</span></div>
       </footer>
     </section>
 
@@ -290,6 +292,7 @@
         <div class="sheet__grip" data-close></div>
         <div class="shop__bal"><svg class="coin" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M6 19.5L18.5 4.5"/></svg><span id="shop-n">0</span></div>
         <div class="shop__grid" id="shop-fonts"></div>
+        <div class="shop__grid" id="shop-pals"></div>
       </div>
     </div>
 

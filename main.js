@@ -185,11 +185,12 @@ function renderCoins() { $('coin-n').textContent = coins.n; $('shop-n').textCont
 // ショップ: four-digits.shop = { v: 1, owned: ["font-seg"], font: "font-seg" | null, pal: null }（null は標準）
 const FONT_IDS = ['font-seg', 'font-mono', 'font-serif'];
 const FONT_PRICE = 120;
+const PAL_IDS = ['pal-chalk', 'pal-grid', 'pal-print'];
 const shop = (() => {
   const d = load('shop', null);
   if (!d || d.v !== 1) return { v: 1, owned: [], font: null, pal: null };
   const owned = Array.isArray(d.owned) ? d.owned.filter((x) => typeof x === 'string') : [];
-  return { v: 1, owned, font: FONT_IDS.includes(d.font) && owned.includes(d.font) ? d.font : null, pal: typeof d.pal === 'string' ? d.pal : null };
+  return { v: 1, owned, font: FONT_IDS.includes(d.font) && owned.includes(d.font) ? d.font : null, pal: PAL_IDS.includes(d.pal) && owned.includes(d.pal) ? d.pal : null };
 })();
 const saveShop = () => save('shop', shop);
 let shopAsk = null;   // 買う確認に変わっているカード
@@ -197,30 +198,56 @@ const COIN_SVG = '<svg class="coin" viewBox="0 0 24 24" aria-hidden="true"><circ
 function applyFont() {
   if (shop.font) document.documentElement.dataset.font = shop.font; else delete document.documentElement.dataset.font;
 }
+const PAL_PRICE = 200;
+const PAL_BG = { 'pal-chalk': '#12291d', 'pal-grid': '#f8f4e2', 'pal-print': '#0c2552' };
+const palNow = () => (PAL_IDS.includes(shop.pal) && shop.owned.includes(shop.pal) ? shop.pal : null);
+// 配色を使っている間は ☀/☾ を隠し、theme-color を配色の地にする。標準に戻したら元の theme に戻る
+function applyPal() {
+  const p = palNow(), h = document.documentElement;
+  if (p) h.dataset.pal = p; else delete h.dataset.pal;
+  $('theme-btn').hidden = !!p;
+  const t = h.getAttribute('data-theme');
+  const dark = t ? t === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+  const c = p ? PAL_BG[p] : (dark ? '#0d1017' : '#f6f4ef');
+  for (const m of document.querySelectorAll('meta[name="theme-color"]')) {
+    m.setAttribute('content', c);
+    if (p || t) m.removeAttribute('media');
+  }
+}
+const SHOP_KINDS = {
+  font: { el: 'shop-fonts', ids: FONT_IDS, price: FONT_PRICE, apply: applyFont },
+  pal: { el: 'shop-pals', ids: PAL_IDS, price: PAL_PRICE, apply: applyPal },
+};
+const PAL_EG = '<span class="shopcard__eg shopcard__eg--pal"><b>2</b><b>0</b><i>+</i><b>2</b><b>7</b></span>';
 function renderShop() {
   $('shop-n').textContent = coins.n;
-  $('shop-fonts').innerHTML = ['', ...FONT_IDS].map((id) => {
-    const own = !id || shop.owned.includes(id);
-    const ask = shopAsk === id && !own;
-    const cls = `shopcard${(shop.font || '') === id ? ' cur' : ''}${ask ? ' ask' : ''}${!own && !ask && coins.n < FONT_PRICE ? ' poor' : ''}`;
-    const price = own ? '' : `<span class="shopcard__price">${COIN_SVG}${FONT_PRICE}${ask ? ' ✓' : ''}</span>`;
-    return `<button class="${cls}" data-id="${id}"${id ? ` data-font="${id}"` : ''}><span class="shopcard__eg">2027</span>${price}</button>`;
-  }).join('');
+  for (const [kind, k] of Object.entries(SHOP_KINDS)) {
+    $(k.el).innerHTML = ['', ...k.ids].map((id) => {
+      const own = !id || shop.owned.includes(id);
+      const ask = shopAsk === id && !own;
+      const cls = `shopcard${(shop[kind] || '') === id ? ' cur' : ''}${ask ? ' ask' : ''}${!own && !ask && coins.n < k.price ? ' poor' : ''}`;
+      const price = own ? '' : `<span class="shopcard__price">${COIN_SVG}${k.price}${ask ? ' ✓' : ''}</span>`;
+      const eg = kind === 'pal' ? PAL_EG : '<span class="shopcard__eg">2027</span>';
+      return `<button class="${cls}" data-id="${id}"${id ? ` data-${kind}="${id}"` : ''}>${eg}${price}</button>`;
+    }).join('');
+  }
 }
-$('shop-fonts').addEventListener('click', (e) => {
-  const c = e.target.closest('[data-id]');
-  if (!c) return;
-  const id = c.dataset.id;
-  const own = !id || shop.owned.includes(id);
-  if (own) {
-    shopAsk = null; shop.font = id || null; saveShop(); applyFont(); sfx.tap();
-  } else if (shopAsk !== id) {
-    if (coins.n < FONT_PRICE) { shopAsk = null; sfx.nope(); } else { shopAsk = id; sfx.tap(); }
-  } else if (coinSpend(FONT_PRICE)) {
-    shopAsk = null; shop.owned.push(id); shop.font = id; saveShop(); applyFont(); sfx.pay();
-  } else { shopAsk = null; sfx.nope(); }
-  renderShop();
-});
+for (const [kind, k] of Object.entries(SHOP_KINDS)) {
+  $(k.el).addEventListener('click', (e) => {
+    const c = e.target.closest('[data-id]');
+    if (!c) return;
+    const id = c.dataset.id;
+    const own = !id || shop.owned.includes(id);
+    if (own) {
+      shopAsk = null; shop[kind] = id || null; saveShop(); k.apply(); sfx.tap();
+    } else if (shopAsk !== id) {
+      if (coins.n < k.price) { shopAsk = null; sfx.nope(); } else { shopAsk = id; sfx.tap(); }
+    } else if (coinSpend(k.price)) {
+      shopAsk = null; shop.owned.push(id); shop[kind] = id; saveShop(); k.apply(); sfx.pay();
+    } else { shopAsk = null; sfx.nope(); }
+    renderShop();
+  });
+}
 // ほかを押したら確認を戻す
 $('shop').addEventListener('click', (e) => {
   if (shopAsk && !e.target.closest(`[data-id="${shopAsk}"]`)) { shopAsk = null; renderShop(); }
@@ -463,8 +490,7 @@ const darkNow = () => {
 };
 function applyTheme(t) {
   document.documentElement.setAttribute('data-theme', t);
-  const c = t === 'light' ? '#f6f4ef' : '#0d1017';
-  for (const m of document.querySelectorAll('meta[name="theme-color"]')) { m.setAttribute('content', c); m.removeAttribute('media'); }
+  applyPal();
 }
 // ボタンには「押すとなる配色」の絵を出す（暗いときは ☀、明るいときは ☾）
 function renderTheme() {
@@ -474,6 +500,7 @@ function renderTheme() {
   b.setAttribute('aria-label', dark ? '明るい配色にする' : '暗い配色にする');
 }
 renderTheme();
+applyPal();
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', renderTheme);
 $('theme-btn').addEventListener('click', () => {
   const t = darkNow() ? 'light' : 'dark';
