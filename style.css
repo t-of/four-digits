@@ -310,7 +310,24 @@ code {
    ホーム
    ===================================================================== */
 .home { overflow-y: auto; }
-.home__top { display: flex; justify-content: flex-end; margin-right: -8px; }
+.home__top { display: flex; justify-content: flex-end; align-items: center; margin-right: -8px; }
+.purse { position: relative; margin-right: 6px; }
+.coin-chip {
+  display: flex; align-items: center; gap: 5px;
+  height: 32px; padding: 0 12px 0 8px;
+  border: 1px solid var(--line2); border-radius: 16px;
+  color: var(--tx2); font-size: var(--fs-1, 14px); font-variant-numeric: tabular-nums;
+}
+.coin { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.4; stroke-linecap: round; }
+.coin-band {
+  position: absolute; right: 0; top: 38px; white-space: nowrap;
+  display: flex; gap: 8px; align-items: baseline;
+  font-size: 12px; color: var(--tx2); letter-spacing: 0.08em;
+  opacity: 0; transform: translateY(-4px); pointer-events: none;
+  transition: opacity 0.25s, transform 0.25s;
+}
+.coin-band.show { opacity: 1; transform: none; }
+.coin-band b { color: var(--tx); font-weight: 600; }
 
 .brand { text-align: left; margin: 0 0 40px; }
 .logo {

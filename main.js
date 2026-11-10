@@ -163,6 +163,58 @@ function autoGiveUp() {
 }
 
 // =====================================================================
+// コイン: four-digits.coins = { v: 1, n: 残高, last: 最後にボーナスを渡した日, run: ログインの連続日数, day: { d, r } }
+// 増やす・減らすのはこの 2 つの関数だけ（★3 のごほうび・ヒント・パスはここを通す）
+// =====================================================================
+const coins = (() => {
+  const d = load('coins', null);
+  const ok = d && d.v === 1 && Number.isFinite(d.n) && d.n >= 0;
+  return ok ? { v: 1, n: Math.floor(d.n), last: typeof d.last === 'string' ? d.last : '', run: Math.max(0, d.run | 0), day: d.day && typeof d.day.d === 'string' ? { d: d.day.d, r: Math.max(0, d.day.r | 0) } : { d: '', r: 0 } }
+    : { v: 1, n: 0, last: '', run: 0, day: { d: '', r: 0 } };
+})();
+const saveCoins = () => save('coins', coins);
+function coinAdd(n) { coins.n += Math.max(0, Math.floor(n)); saveCoins(); renderCoins(); }
+// 足りなければ false（何も引かない）
+function coinSpend(n) {
+  if (!(n > 0) || coins.n < n) return false;
+  coins.n -= n; saveCoins(); renderCoins();
+  return true;
+}
+function renderCoins() { $('coin-n').textContent = coins.n; }
+
+// ログインボーナス: 1 日目 5 → 毎日 +1 → 6 日目以降 10。1 日あけたら 1 日目。日付を戻したときは渡さない
+const prevDay = (key) => { const [y, m, d] = key.split('-').map(Number); return dateKey(new Date(y, m - 1, d - 1)); };
+let bandTimer = 0;
+function claimLogin() {
+  const today = dateKey(new Date());
+  if (coins.last && today <= coins.last) return;
+  coins.run = coins.last && prevDay(today) === coins.last ? coins.run + 1 : 1;
+  coins.last = today;
+  const gain = Math.min(4 + coins.run, 10);
+  const from = coins.n;
+  coins.n += gain; saveCoins();
+  showBand(from, gain, Math.min(coins.run, 7));
+}
+function showBand(from, gain, day) {
+  const band = $('coin-band');
+  $('coin-plus').textContent = `+${gain}`;
+  $('coin-dots').textContent = '●'.repeat(day) + '○'.repeat(7 - day);
+  $('coin-n').textContent = from;
+  band.classList.add('show');
+  sfx.coin();
+  let k = 0;
+  const step = reduceMotion ? gain : 1;
+  const t = setInterval(() => {
+    k += step;
+    $('coin-n').textContent = from + Math.min(k, gain);
+    if (k >= gain) clearInterval(t);
+  }, 90);
+  clearTimeout(bandTimer);
+  bandTimer = setTimeout(() => { band.classList.remove('show'); renderCoins(); }, 2000);
+}
+$('coin-chip').addEventListener('click', () => { /* ショップは後で */ });
+
+// =====================================================================
 // 今日の 1 問: four-digits.daily = { "2026-11-06": 星, … }（解いた日だけ。その日の最高）
 // =====================================================================
 const daily = (() => { const d = load('daily', {}); return d && typeof d === 'object' && !Array.isArray(d) ? d : {}; })();
@@ -275,6 +327,8 @@ tableReady.then(() => { tableTried = true; if (current === 'home') renderHome();
 function showHome() {
   show('home');
   renderHome();
+  renderCoins();
+  if (!needTut()) claimLogin();   // はじめての日は最初の 1 問のあと、ホームに戻ったときに渡す
 }
 
 $('auto-btn').addEventListener('click', async () => { sfx.tap(); await tableReady; openAuto(); });
