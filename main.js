@@ -180,7 +180,52 @@ function coinSpend(n) {
   coins.n -= n; saveCoins(); renderCoins();
   return true;
 }
-function renderCoins() { $('coin-n').textContent = coins.n; }
+function renderCoins() { $('coin-n').textContent = coins.n; $('shop-n').textContent = coins.n; }
+
+// ショップ: four-digits.shop = { v: 1, owned: ["font-seg"], font: "font-seg" | null, pal: null }（null は標準）
+const FONT_IDS = ['font-seg', 'font-mono', 'font-serif'];
+const FONT_PRICE = 120;
+const shop = (() => {
+  const d = load('shop', null);
+  if (!d || d.v !== 1) return { v: 1, owned: [], font: null, pal: null };
+  const owned = Array.isArray(d.owned) ? d.owned.filter((x) => typeof x === 'string') : [];
+  return { v: 1, owned, font: FONT_IDS.includes(d.font) && owned.includes(d.font) ? d.font : null, pal: typeof d.pal === 'string' ? d.pal : null };
+})();
+const saveShop = () => save('shop', shop);
+let shopAsk = null;   // 買う確認に変わっているカード
+const COIN_SVG = '<svg class="coin" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M6 19.5L18.5 4.5"/></svg>';
+function applyFont() {
+  if (shop.font) document.documentElement.dataset.font = shop.font; else delete document.documentElement.dataset.font;
+}
+function renderShop() {
+  $('shop-n').textContent = coins.n;
+  $('shop-fonts').innerHTML = ['', ...FONT_IDS].map((id) => {
+    const own = !id || shop.owned.includes(id);
+    const ask = shopAsk === id && !own;
+    const cls = `shopcard${(shop.font || '') === id ? ' cur' : ''}${ask ? ' ask' : ''}${!own && !ask && coins.n < FONT_PRICE ? ' poor' : ''}`;
+    const price = own ? '' : `<span class="shopcard__price">${COIN_SVG}${FONT_PRICE}${ask ? ' ✓' : ''}</span>`;
+    return `<button class="${cls}" data-id="${id}"${id ? ` data-font="${id}"` : ''}><span class="shopcard__eg">2027</span>${price}</button>`;
+  }).join('');
+}
+$('shop-fonts').addEventListener('click', (e) => {
+  const c = e.target.closest('[data-id]');
+  if (!c) return;
+  const id = c.dataset.id;
+  const own = !id || shop.owned.includes(id);
+  if (own) {
+    shopAsk = null; shop.font = id || null; saveShop(); applyFont(); sfx.tap();
+  } else if (shopAsk !== id) {
+    if (coins.n < FONT_PRICE) { shopAsk = null; sfx.nope(); } else { shopAsk = id; sfx.tap(); }
+  } else if (coinSpend(FONT_PRICE)) {
+    shopAsk = null; shop.owned.push(id); shop.font = id; saveShop(); applyFont(); sfx.pay();
+  } else { shopAsk = null; sfx.nope(); }
+  renderShop();
+});
+// ほかを押したら確認を戻す
+$('shop').addEventListener('click', (e) => {
+  if (shopAsk && !e.target.closest(`[data-id="${shopAsk}"]`)) { shopAsk = null; renderShop(); }
+});
+applyFont();
 
 // ログインボーナス: 1 日目 5 → 毎日 +1 → 6 日目以降 10。1 日あけたら 1 日目。日付を戻したときは渡さない
 const prevDay = (key) => { const [y, m, d] = key.split('-').map(Number); return dateKey(new Date(y, m - 1, d - 1)); };
@@ -243,7 +288,7 @@ function showReward(gain) {
   }, 90);
   timers.push(iv);
 }
-$('coin-chip').addEventListener('click', () => { /* ショップは後で */ });
+$('coin-chip').addEventListener('click', () => { sfx.tap(); shopAsk = null; renderShop(); openSheet('shop'); });
 
 // =====================================================================
 // 今日の 1 問: four-digits.daily = { "2026-11-06": 星, … }（解いた日だけ。その日の最高）
@@ -942,6 +987,7 @@ function closeSheet() {
   s.classList.remove('open');
   s.hidden = true;
   if (openSheetId === 'help') save('help', true);
+  shopAsk = null;
   openSheetId = null;
 }
 for (const s of document.querySelectorAll('.sheet')) {

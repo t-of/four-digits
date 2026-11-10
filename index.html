@@ -110,7 +110,7 @@
           <button class="pill" data-wak="install" hidden>アプリにする</button>
           <button class="pill" data-wak="share">共有</button>
         </div>
-        <div><a href="/">T.OF...</a> ・ <a href="https://t-of.github.io/contact/">問い合わせ</a> ・ <span class="ver">v29</span></div>
+        <div><a href="/">T.OF...</a> ・ <a href="https://t-of.github.io/contact/">問い合わせ</a> ・ <span class="ver">v30</span></div>
       </footer>
     </section>
 
@@ -281,6 +281,15 @@
           <dt>!<sup>N</sup></dt><dd><code>9!⁽³⁾</code> = 9×6×3 = 162<br><small>N ずつ減らして掛ける（N 重階乗）。N がいくつでも 1 個</small></dd>
           <dt>!n</dt><dd><code>!0</code> = 1　<code>!3</code> = 2　<code>!4</code> = 9　<code>!5</code> = 44<br><small>n 人でプレゼントを交換して、だれも自分のを受け取らない分け方の数（部分階乗）</small></dd>
         </dl>
+      </div>
+    </div>
+
+    <!-- ========== シート（ショップ） ========== -->
+    <div class="sheet" id="shop" hidden role="dialog" aria-modal="true" aria-label="ショップ">
+      <div class="sheet__panel">
+        <div class="sheet__grip" data-close></div>
+        <div class="shop__bal"><svg class="coin" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M6 19.5L18.5 4.5"/></svg><span id="shop-n">0</span></div>
+        <div class="shop__grid" id="shop-fonts"></div>
       </div>
     </div>
 

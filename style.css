@@ -151,6 +151,10 @@
   font-display: swap;
 }
 
+@font-face { font-family: "Seg"; src: url("./fonts/seg.woff2") format("woff2"); font-weight: normal; font-style: normal; font-display: swap; }
+@font-face { font-family: "Mono"; src: url("./fonts/mono.woff2") format("woff2"); font-weight: normal; font-style: normal; font-display: swap; }
+@font-face { font-family: "Serif"; src: url("./fonts/serif.woff2") format("woff2"); font-weight: normal; font-style: normal; font-display: swap; }
+
 * { box-sizing: border-box; }
 html, body {
   margin: 0;
@@ -939,3 +943,37 @@ code {
   background: linear-gradient(180deg, var(--gold-hi-top), var(--gold-hi-bot));
   -webkit-background-clip: text; background-clip: text; color: transparent; text-shadow: none;
 }
+
+/* =====================================================================
+   書体（ショップで買ったもの）: 数字の板と目標の数字だけ。<html data-font> とカードの data-font が --num を決める。
+   記号・文字は Jost のまま（収録にない字は Jost に落ちる）
+   ===================================================================== */
+[data-font="font-seg"] { --num: "Seg", var(--font); --num-k: 0.78; }
+[data-font="font-mono"] { --num: "Mono", var(--font); }
+[data-font="font-serif"] { --num: "Serif", var(--font); --num-ff: "lnum", "tnum"; }
+.t-d, .goal__num, .preview__digits, .preview__target, .slot, .zbig, .zcard__head b, .mk b, .cell b, .topbar__title--digits i, .shopcard__eg {
+  font-family: var(--num, var(--font));
+  font-feature-settings: var(--num-ff, "tnum");
+  font-synthesis: none;
+}
+/* 7 セグは横に広いので、使っている間だけ大きな数字を詰める */
+.goal__num, .slot, .preview__digits, .preview__target, .zbig { font-size: calc(var(--fs-4) * var(--num-k, 1)); }
+.goal__num { font-size: calc(var(--fs-hero) * var(--num-k, 1)); }
+@media (max-height: 700px) { .goal__num { font-size: calc(64px * var(--num-k, 1)); } }
+
+/* ショップ */
+.shop__bal { display: flex; align-items: center; gap: 6px; color: var(--tx2); font-size: var(--fs-2); font-variant-numeric: tabular-nums; }
+.shop__grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.shopcard {
+  position: relative; display: grid; place-items: center; height: 88px;
+  background: var(--s2); border: 1px solid var(--line); border-radius: 14px;
+  color: var(--tx);
+}
+.shopcard.cur { border-color: var(--tx2); }
+.shopcard.ask { border-color: var(--ink); }
+.shopcard.poor { opacity: 0.55; }
+.shopcard__eg { font-size: 30px; font-weight: 800; letter-spacing: 0.04em; line-height: 1; }
+.shopcard[data-font="font-seg"] .shopcard__eg { font-size: 24px; }
+.shopcard__price { position: absolute; right: 10px; bottom: 7px; display: flex; align-items: center; gap: 3px; font-size: var(--fs-1); color: var(--tx2); font-variant-numeric: tabular-nums; }
+.shopcard__price .coin { width: 14px; height: 14px; }
+.shopcard.ask .shopcard__price { color: var(--ink); }
