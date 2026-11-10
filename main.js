@@ -447,6 +447,7 @@ function openPuzzle(t, md = 'free') {
   $('puzzle-target').textContent = t;
   $('puzzle-tag').innerHTML = md === 'daily' ? '今日の 1 問'
     : md === 'auto' ? `おまかせ <em>Lv ${auto.L}</em>` : `フリー <em>${digits}</em>`;
+  passReset();
   $('giveup').hidden = md !== 'auto';
   $('expr').classList.remove('won');
   showMine();
@@ -704,7 +705,31 @@ function leavePuzzle() {
 }
 $('puzzle-back').addEventListener('click', () => { sfx.tap(); leavePuzzle(); });
 $('puzzle-help').addEventListener('click', () => openSheet('help'));
-$('giveup').addEventListener('click', () => { const was = auto.L; sfx.del(); autoGiveUp(); toast(auto.L === was ? 'パス' : `パス ・ Lv ${was} → ${auto.L}`, 2400); openAuto(); });
+// パス: Lv が下がる（Lv2 以上）ときだけ、押すとボタンが 2 つに分かれる（`Lv 3 → 2` と `◎5 Lv 3`）。3 秒触らなければ戻る
+const KEEP_COST = 5;
+let splitTimer = 0;
+function passReset() {
+  clearTimeout(splitTimer); splitTimer = 0;
+  $('giveup').textContent = 'パス';
+  $('giveup-keep').hidden = true;
+}
+function passDone(keep) {
+  const was = auto.L;
+  passReset();
+  if (keep) { auto.streak = 0; autoPush(); saveAuto(); sfx.pay(); }
+  else { sfx.del(); autoGiveUp(); }
+  toast(keep ? `Lv ${was} のまま` : auto.L === was ? 'パス' : `パス ・ Lv ${was} → ${auto.L}`, 2400);
+  openAuto();
+}
+$('giveup').addEventListener('click', () => {
+  if (!$('giveup-keep').hidden || auto.L < 2 || coins.n < KEEP_COST) { passDone(false); return; }
+  sfx.tap();
+  $('giveup').textContent = `Lv ${auto.L} → ${auto.L - 1}`;
+  $('giveup-keep').textContent = `◎${KEEP_COST} Lv ${auto.L}`;
+  $('giveup-keep').hidden = false;
+  splitTimer = setTimeout(passReset, 3000);
+});
+$('giveup-keep').addEventListener('click', () => { if (coinSpend(KEEP_COST)) passDone(true); else passReset(); });
 $('r-next').addEventListener('click', () => {
   sfx.tap();
   if (mode === 'auto' || mode === 'daily') return openAuto();

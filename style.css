@@ -578,6 +578,8 @@ code {
 .key--fn, .key--mv { color: var(--tx2); }
 .key--primary { background: linear-gradient(180deg, var(--gold-top), var(--gold)); color: var(--on-gold); border-color: transparent; font-size: var(--fs-2); font-weight: 600; }
 
+.passrow { display: flex; gap: 8px; align-self: center; }
+.pass--keep { color: var(--blue, var(--gold)); }
 .pass {
   align-self: center;
   min-height: 36px;
