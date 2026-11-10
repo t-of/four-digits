@@ -32,3 +32,8 @@ python3 -m http.server 8000   # → http://localhost:8000/
 ## 書体
 
 数字とラテン文字は [Jost](https://github.com/indestructible-type/Jost)（SIL Open Font License 1.1、`fonts/OFL.txt`）。`fonts/jost.woff2` は wght 400–800 の可変フォントを、ラテン・数字・使う記号だけに絞ったもの。日本語はシステムフォント。
+
+ショップで売る数字の書体（どれも 0〜9 と「.」だけに絞った woff2、各 1〜3 KB。数字の板と目標の数字にだけ使う）。
+- `fonts/seg.woff2`: [DSEG7 Classic](https://github.com/keshikan/DSEG) Regular（OFL 1.1、`fonts/OFL-DSEG.txt`）。電卓の 7 セグメント。太さは 1 種類のみ。
+- `fonts/mono.woff2`: [IBM Plex Mono](https://github.com/IBM/plex) Medium 500（OFL 1.1、`fonts/OFL-IBMPlexMono.txt`）。活字の等幅。JetBrains Mono より字面が活字らしく、板の数字に合う。
+- `fonts/serif.woff2`: [Playfair Display](https://github.com/clauseggers/Playfair) の可変フォントを wght 600 に固定（OFL 1.1、`fonts/OFL-PlayfairDisplay.txt`）。銅版のセリフ。既定がオールドスタイル数字なので、`font-feature-settings: "lnum"`（ライニング）で使う。EB Garamond より 2 と 7 の太細の差がはっきりして読みやすい。
