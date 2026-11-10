@@ -277,12 +277,33 @@ function dailyPuzzle(key) {
     if (lv === 3 || lv === 4) return [n, t];
   }
 }
+// 守った日（four-digits.guard）は数えないがつなぐ。星の記録（daily）には書かない
+const guard = (() => { const d = load('guard', []); return Array.isArray(d) ? d.filter((x) => typeof x === 'string') : []; })();
+const GUARD_COST = 30;
+function streakFrom(d) {
+  let n = 0;
+  for (;;) {
+    const k = dateKey(d);
+    if (daily[k] > 0) n++;
+    else if (!guard.includes(k)) break;
+    d.setDate(d.getDate() - 1);
+  }
+  return n;
+}
 function dailyStreak() {
   const d = new Date();
-  if (!daily[dateKey(d)]) d.setDate(d.getDate() - 1);
-  let n = 0;
-  while (daily[dateKey(d)] > 0) { n++; d.setDate(d.getDate() - 1); }
-  return n;
+  if (!(daily[dateKey(d)] > 0)) d.setDate(d.getDate() - 1);
+  return streakFrom(d);
+}
+// 守れるとき、守る前の連続日数（おととい以前で 2 日以上）。守れないときは 0
+function guardable() {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  const y = dateKey(d);
+  if (daily[y] > 0 || guard.includes(y)) return 0;
+  d.setDate(d.getDate() - 1);
+  const n = streakFrom(d);
+  return n >= 2 ? n : 0;
 }
 function untilTomorrow() {
   const now = new Date();
@@ -332,11 +353,14 @@ function renderDailyCard() {
   const st = $('daily-st');
   st.textContent = starStr(s);
   st.classList.toggle('done', s > 0);
-  const streak = dailyStreak();
+  const gn = guardable();
+  const streak = gn || dailyStreak();
   const parts = [];
   if (streak) parts.push(`${streak} 日連続`);
   if (s) parts.push(`次の問題まで ${untilTomorrow()}`);
   $('daily-meta').textContent = parts.join(' ・ ');
+  $('daily-meta').classList.toggle('broken', !!gn);
+  $('guard-btn').hidden = !(gn && coins.n >= GUARD_COST);
   $('daily-btn').classList.toggle('is-done', s > 0);
 }
 
@@ -370,6 +394,13 @@ $('daily-btn').addEventListener('click', async () => {
   const [n, t] = dailyPuzzle(dailyDate);
   digits = pad4(n);
   openPuzzle(t, 'daily');
+});
+$('guard-btn').addEventListener('click', () => {
+  if (!guardable() || !coinSpend(GUARD_COST)) return;
+  const d = new Date(); d.setDate(d.getDate() - 1);
+  guard.push(dateKey(d)); save('guard', guard);
+  sfx.pay();
+  renderDailyCard();
 });
 $('free-btn').addEventListener('click', () => { sfx.tap(); openFree(); });
 $('zukan-btn').addEventListener('click', () => { sfx.tap(); openZukan(); });
