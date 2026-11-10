@@ -560,7 +560,7 @@ function finish(k) {
   $('value').classList.add('hit');
   showMine();
   $('nsel').hidden = true;
-  $('giveup').hidden = true;
+  $('giveup').hidden = true; passReset();
 
   // 結果パネルの中身
   $('r-stars').innerHTML = [0, 1, 2].map((i) => `<span class="st ${i < got ? 'on' : 'off'}">★</span>`).join('');
