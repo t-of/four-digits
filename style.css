@@ -977,3 +977,144 @@ code {
 .shopcard__price { position: absolute; right: 10px; bottom: 7px; display: flex; align-items: center; gap: 3px; font-size: var(--fs-1); color: var(--tx2); font-variant-numeric: tabular-nums; }
 .shopcard__price .coin { width: 14px; height: 14px; }
 .shopcard.ask .shopcard__price { color: var(--ink); }
+
+/* =====================================================================
+   配色（ショップで買ったもの）: <html data-pal="pal-chalk|pal-grid|pal-print">。明るい・暗いの切り替えより必ず勝つ。
+   詳細度: :root[data-pal]:is(*, [data-theme]) は (0,3,0)。上の :root:not([data-theme="dark"])・:root[data-theme="light"]（どちらも (0,2,0)）に勝ち、後ろに置いてもいる。
+   役: 金（--gold 系）は星・目標・成功だけ、青（--ink 系）は押せるものだけ。配色ごとに 1 色ずつ。
+   ===================================================================== */
+
+/* 黒板（深い緑の地、チョークの白・黄・水色） */
+:root[data-pal="pal-chalk"]:is(*, [data-theme]) {
+  --bg: #12291d;
+  --bg2: #153123;
+  --s1: #1b3a2a;
+  --s2: #234734;
+  --s3: #2c5540;
+  --line: #34604a;
+  --line2: #46775e;
+  --tx: #f1f3ea;
+  --tx2: #bcc9bb;
+  --tx3: #9db39e;
+  --gold: #f6dc6a;
+  --gold2: #fff0a0;
+  --gold-tx: #f6dc6a;
+  --gold-rgb: 246, 220, 106;
+  --gold-top: #f6dc6a;
+  --gold-hi-top: #f6dc6a;
+  --gold-hi-bot: #f6dc6a;
+  --on-gold: #1d1a05;
+  --ink: #8fdcf0;
+  --ink-dim: rgba(143, 220, 240, 0.16);
+  --warn: #ff9d8a;
+  --bg-glow: #1d4331;
+  --app-edge: #1a3626;
+  --logo-top: #ffffff;
+  --logo-bot: #cfd8cc;
+  --key-shadow: #0c1c13;
+  --key-hi: rgba(255,255,255,0.05);
+  --op-top: #1f4231;
+  --op-bot: #1b3b2c;
+  --op-line: #3d6a55;
+  --sheet-top: #21432f;
+  --scrim-rgb: 3, 12, 7;
+  --shadow-rgb: 0, 0, 0;
+  --map1: #6b6430;
+  --map2: #c9b24a;
+  color-scheme: dark;
+}
+
+/* 方眼（クリームの地に薄い方眼、紺のインク、朱、青） */
+:root[data-pal="pal-grid"]:is(*, [data-theme]) {
+  --bg: #f8f4e2;
+  --bg2: #f3eed9;
+  --s1: #fffef6;
+  --s2: #f1ecd8;
+  --s3: #e8e2cb;
+  --line: #e0d9bd;
+  --line2: #cbc3a0;
+  --tx: #1c2a5e;
+  --tx2: #4a5686;
+  --tx3: #5c6590;
+  --gold: #c93219;
+  --gold2: #c93219;
+  --gold-tx: #c93219;
+  --gold-rgb: 201, 50, 25;
+  --gold-top: #c93219;
+  --gold-hi-top: #c93219;
+  --gold-hi-bot: #c93219;
+  --on-gold: #ffffff;
+  --ink: #1d5fd1;
+  --ink-dim: rgba(29, 95, 209, 0.1);
+  --warn: #8a3a00;
+  --bg-glow: #fffdf0;
+  --app-edge: #e6dfc4;
+  --logo-top: #1c2a5e;
+  --logo-bot: #4a5686;
+  --key-shadow: #d8d0b0;
+  --key-hi: rgba(255,255,255,0.7);
+  --op-top: #f3f6ff;
+  --op-bot: #e8eefb;
+  --op-line: #bccaee;
+  --sheet-top: #fffef8;
+  --scrim-rgb: 40, 36, 24;
+  --shadow-rgb: 60, 50, 30;
+  --map1: #ecc9bd;
+  --map2: #d6492c;
+  color-scheme: light;
+}
+
+/* 青写真（紺の地、白い線、明るい黄、水色） */
+:root[data-pal="pal-print"]:is(*, [data-theme]) {
+  --bg: #0c2552;
+  --bg2: #0f2b5e;
+  --s1: #143368;
+  --s2: #1a3f7a;
+  --s3: #214b8d;
+  --line: #2c5a9e;
+  --line2: #3f6fb3;
+  --tx: #f3f8ff;
+  --tx2: #b9cdee;
+  --tx3: #92aedb;
+  --gold: #ffe14d;
+  --gold2: #fff09a;
+  --gold-tx: #ffe14d;
+  --gold-rgb: 255, 225, 77;
+  --gold-top: #ffe14d;
+  --gold-hi-top: #ffe14d;
+  --gold-hi-bot: #ffe14d;
+  --on-gold: #1a1500;
+  --ink: #86d4ff;
+  --ink-dim: rgba(134, 212, 255, 0.16);
+  --warn: #ff9a8a;
+  --bg-glow: #183f7c;
+  --app-edge: #10295a;
+  --logo-top: #ffffff;
+  --logo-bot: #bcd0f0;
+  --key-shadow: #071a3c;
+  --key-hi: rgba(255,255,255,0.05);
+  --op-top: #173a72;
+  --op-bot: #143368;
+  --op-line: #3a69ad;
+  --sheet-top: #183a70;
+  --scrim-rgb: 3, 10, 28;
+  --shadow-rgb: 0, 0, 8;
+  --map1: #6b6430;
+  --map2: #d9bd3c;
+  color-scheme: dark;
+}
+
+/* 大きな金の数字: 明るい版のグラデーション（上の data-theme の規則）を打ち消し、配色では 1 色の字にする。
+   (0,4,0) で上の規則 (0,3,0) に勝つ */
+:root[data-pal]:is(*, [data-theme]) :is(.goal__num, .preview__target, .zbig) {
+  background: none; -webkit-background-clip: border-box; background-clip: border-box; color: var(--gold);
+}
+:root[data-pal="pal-grid"]:is(*, [data-theme]) .goal__num { text-shadow: none; }
+/* 方眼: 地に薄い方眼の線（背景のグラデーションだけ。画像なし） */
+:root[data-pal="pal-grid"] body {
+  background:
+    linear-gradient(to right, rgba(28, 42, 94, 0.08) 1px, transparent 1px) 0 0 / 24px 24px,
+    linear-gradient(to bottom, rgba(28, 42, 94, 0.08) 1px, transparent 1px) 0 0 / 24px 24px,
+    radial-gradient(120% 60% at 50% -10%, var(--bg-glow) 0%, transparent 60%),
+    var(--bg);
+}
