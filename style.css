@@ -496,13 +496,10 @@ code {
   padding: 0 0.07em;
   color: var(--tx);
   font-weight: 800;
-  background: var(--s2);
-  border: 1px solid var(--line2);
-  border-radius: 0.16em;
   margin: 0 0.04em;
 }
-.t-d.jl { border-left-width: 0; border-top-left-radius: 0; border-bottom-left-radius: 0; margin-left: 0; }
-.t-d.jr { border-right-width: 0; border-top-right-radius: 0; border-bottom-right-radius: 0; margin-right: 0; }
+.t-d.jl { margin-left: 0; }
+.t-d.jr { margin-right: 0; }
 .t-dot { color: var(--ink); padding: 0; }
 .t-op { color: var(--ink); padding: 0 0.1em; font-weight: 400; top: -0.08em; }   /* 記号を数字の高さの中央（数式の軸）へ */
 .t-par { color: var(--tx2); font-weight: 400; padding: 0 0.02em; }
@@ -527,7 +524,7 @@ code {
 .expr.won .t-d { animation: win 0.5s var(--ease) both; animation-delay: calc(var(--k) * 45ms); }
 @keyframes win {
   40% { transform: translateY(-0.12em); }
-  to { background: var(--gold-dim); border-color: rgba(var(--gold-rgb), 0.6); color: var(--gold2); }
+  to { color: var(--gold2); }
 }
 
 .value {
