@@ -194,7 +194,7 @@ const shop = (() => {
 })();
 const saveShop = () => save('shop', shop);
 let shopAsk = null;   // 買う確認に変わっているカード
-const COIN_SVG = '<svg class="coin" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M6 19.5L18.5 4.5"/></svg>';
+const COIN_SVG = '<svg class="coin" viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="10.5" rx="8.5" ry="5.5"/><path d="M3.5 10.5v3c0 3 3.8 5.5 8.5 5.5s8.5-2.5 8.5-5.5v-3"/></svg>';
 function applyFont() {
   if (shop.font) document.documentElement.dataset.font = shop.font; else delete document.documentElement.dataset.font;
 }
