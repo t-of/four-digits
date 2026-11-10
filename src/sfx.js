@@ -73,6 +73,7 @@ export const sfx = {
   // 星の空き
   empty() { tone(330, 0.12, { type: 'sine', gain: 0.03 }); },
   // コインが増えた（高めの短い 2 音。星の鐘より小さく短い）
+  coinTick(i) { tone(1760 * Math.pow(2, Math.min(i, 9) / 24), 0.05, { type: 'sine', gain: 0.022 }); },
   coin() { tone(2093, 0.07, { type: 'sine', gain: 0.03 }); tone(2794, 0.09, { type: 'sine', gain: 0.025, at: 0.07 }); },
   // コインを払った（柔らかい低めの 1 音）
   pay() { tone(260, 0.09, { type: 'sine', gain: 0.05, to: 200 }); },

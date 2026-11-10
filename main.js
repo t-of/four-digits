@@ -180,7 +180,7 @@ function coinSpend(n) {
   coins.n -= n; saveCoins(); renderCoins();
   return true;
 }
-function renderCoins() { $('coin-n').textContent = coins.n; $('shop-n').textContent = coins.n; }
+function renderCoins() { $('coin-n').textContent = coins.n; $('shop-n').textContent = coins.n; $('p-coin-n').textContent = coins.n; }
 
 // ショップ: four-digits.shop = { v: 1, owned: ["font-seg"], font: "font-seg" | null, pal: null }（null は標準）
 const FONT_IDS = ['font-seg', 'font-mono', 'font-serif'];
@@ -300,20 +300,44 @@ function star3Reward(isFirst, isDaily) {
   if (gain) coinAdd(gain);
   return gain;
 }
-// 星のあとに残高が 1 つずつ増える
+// 星のあとに、結果の行から上のコイン表示へコインが飛んでいき、届くたびに残高が増える
 function showReward(gain) {
   const from = coins.n - gain;
-  const rc = $('r-coin');
+  const rc = $('r-coin'), pc = $('p-coin');
   rc.classList.add('in');
   sfx.coin();
-  let k = 0;
-  const step = reduceMotion ? gain : 1;
-  const iv = setInterval(() => {
-    k += step;
-    $('r-coin-n').textContent = from + Math.min(k, gain);
-    if (k >= gain) clearInterval(iv);
-  }, 90);
-  timers.push(iv);
+  const n = reduceMotion ? 1 : Math.min(gain, 10);
+  const a = rc.querySelector('.coin').getBoundingClientRect();
+  const b = pc.querySelector('.coin').getBoundingClientRect();
+  for (let i = 0; i < n; i++) later(() => {
+    if (!reduceMotion) flyCoin(a, b);
+    later(() => {
+      const v = from + Math.round((gain * (i + 1)) / n);
+      $('r-coin-n').textContent = v;
+      $('p-coin-n').textContent = v;
+      pc.classList.remove('bump'); void pc.offsetWidth; pc.classList.add('bump');
+      sfx.coinTick(i);
+      if (i === n - 1) {
+        const pl = $('p-coin-plus');
+        pl.textContent = `+${gain}`;
+        pl.classList.remove('show'); void pl.offsetWidth; pl.classList.add('show');
+      }
+    }, reduceMotion ? 0 : 460);
+  }, i * 80);
+}
+function flyCoin(a, b) {
+  const el = document.createElement('div');
+  el.className = 'coin-fly';
+  el.innerHTML = COIN_SVG;
+  el.style.left = `${a.left}px`; el.style.top = `${a.top}px`;
+  document.body.appendChild(el);
+  const dx = b.left - a.left, dy = b.top - a.top;
+  const sx = (Math.random() - 0.5) * 70;
+  el.animate([
+    { transform: 'translate(0, 0) scale(0.6)', opacity: 0 },
+    { transform: `translate(${sx}px, -26px) scale(1.2)`, opacity: 1, offset: 0.25 },
+    { transform: `translate(${dx}px, ${dy}px) scale(0.85)`, opacity: 1 },
+  ], { duration: 460, easing: 'cubic-bezier(.45,0,.7,1)' }).onfinish = () => el.remove();
 }
 $('coin-chip').addEventListener('click', () => { sfx.tap(); shopAsk = null; renderShop(); openSheet('shop'); });
 
@@ -675,7 +699,7 @@ function finish(k) {
   $('r-retry').hidden = got >= 3;
   const rc = $('r-coin');
   rc.hidden = !reward; rc.classList.remove('in');
-  if (reward) { $('r-coin-n').textContent = coins.n - reward; $('r-coin-plus').textContent = `+${reward}`; }
+  if (reward) { $('r-coin-n').textContent = coins.n - reward; $('p-coin-n').textContent = coins.n - reward; $('r-coin-plus').textContent = `+${reward}`; }
   $('r-share').hidden = mode !== 'daily';
   $('r-daily').hidden = mode !== 'daily';
   const next = $('r-next');
