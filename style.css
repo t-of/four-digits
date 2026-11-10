@@ -337,6 +337,7 @@ code {
 .coin-fly { position: fixed; z-index: 50; width: 20px; height: 20px; color: var(--gold2); pointer-events: none; filter: drop-shadow(0 0 6px rgba(var(--gold-rgb), 0.7)); }
 .coin-fly .coin { display: block; stroke-width: 1.8; }
 @media (prefers-reduced-motion: reduce) { .p-coin.bump { animation: none; } }
+#coin-chip .coin { color: var(--gold-tx); }
 .coin-band {
   position: absolute; right: 0; top: 38px; white-space: nowrap;
   display: flex; gap: 8px; align-items: baseline;
