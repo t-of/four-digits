@@ -939,3 +939,23 @@ code {
   background: linear-gradient(180deg, var(--gold-hi-top), var(--gold-hi-bot));
   -webkit-background-clip: text; background-clip: text; color: transparent; text-shadow: none;
 }
+
+/* =====================================================================
+   ヒント（ボタン・シート・目標の下の骨組み）。金は使わない・青は押せるものだけ
+   ===================================================================== */
+#s-puzzle .topbar { grid-template-columns: 44px 1fr 44px 44px; }
+.hint-row { margin-top: 6px; font-size: 20px; letter-spacing: 0.3em; color: var(--tx2); min-height: 24px; }
+.hint-row[hidden] { display: none; }
+.hint-bal { display: flex; align-items: center; gap: 6px; align-self: center; color: var(--tx2); font-variant-numeric: tabular-nums; font-size: var(--fs-3); }
+.hint-bal .coin { width: 24px; height: 24px; }
+.hint-item {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  width: 100%; min-height: 64px; padding: 12px 18px;
+  background: var(--bg2); border: 1px solid var(--ink); border-radius: 16px;
+  color: var(--tx); text-align: left;
+}
+.hint-item:active { background: var(--ink-dim); }
+.hint-item__eg { font-size: 26px; letter-spacing: 0.25em; color: var(--tx); font-feature-settings: "tnum"; }
+.hint-item__cost { display: flex; align-items: center; gap: 4px; color: var(--tx2); font-variant-numeric: tabular-nums; }
+.hint-item__cost .coin { width: 18px; height: 18px; }
+.hint-item.dim { opacity: 0.4; border-color: var(--line2); }

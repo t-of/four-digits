@@ -246,6 +246,48 @@ function showReward(gain) {
 $('coin-chip').addEventListener('click', () => { /* ショップは後で */ });
 
 // =====================================================================
+// ヒント: four-digits.hints = { v: 1, p: { "0123:45": [ヒント 1 を買ったか 0/1, ヒント 2 で見せた数] } }（300 件まで）
+// ヒント 1 は最短の数 m を目標の下に ○ で出すだけ。星には影響しない。ヒント 2 はまだ（データ待ち）
+// =====================================================================
+const HINT1_COST = 3, HINT_MAX = 300;
+const hints = (() => {
+  const d = load('hints', null);
+  return d && d.v === 1 && d.p && typeof d.p === 'object' ? d.p : {};
+})();
+const hintKey = () => `${digits}:${target}`;
+const hasHint1 = () => !!(hints[hintKey()] && hints[hintKey()][0]);
+function buyHint1() {
+  const k = hintKey();
+  const e = hints[k] || [0, 0];
+  e[0] = 1;
+  delete hints[k]; hints[k] = e;   // 新しいものを後ろへ
+  for (const old of Object.keys(hints)) { if (Object.keys(hints).length <= HINT_MAX) break; delete hints[old]; }
+  save('hints', { v: 1, p: hints });
+}
+// 目標の下の骨組みの行（○ を m 個）
+function renderHintRow() {
+  const row = $('hint-row');
+  const m = minOf(digits, target);
+  const on = hasHint1() && m < 255;
+  row.hidden = !on;
+  row.textContent = on ? '○'.repeat(m) : '';
+}
+function renderHintSheet() {
+  $('hint-n').textContent = coins.n;
+  $('hint-1').classList.toggle('dim', coins.n < HINT1_COST && !hasHint1());
+  $('hint-1-cost').hidden = hasHint1();
+  const m = minOf(digits, target);
+  $('hint-1-eg').textContent = '○'.repeat(hasHint1() && m < 255 ? m : 3);
+}
+$('puzzle-hint').addEventListener('click', () => { sfx.tap(); renderHintSheet(); openSheet('hint'); });
+$('hint-1').addEventListener('click', () => {
+  if (hasHint1() || minOf(digits, target) >= 255) { sfx.tap(); closeSheet(); return; }
+  if (!coinSpend(HINT1_COST)) { sfx.nope(); return; }
+  sfx.pay(); buyHint1();
+  renderHintRow(); closeSheet();
+});
+
+// =====================================================================
 // 今日の 1 問: four-digits.daily = { "2026-11-06": 星, … }（解いた日だけ。その日の最高）
 // =====================================================================
 const daily = (() => { const d = load('daily', {}); return d && typeof d === 'object' && !Array.isArray(d) ? d : {}; })();
@@ -476,6 +518,7 @@ function openPuzzle(t, md = 'free') {
   resetPad();
   show('puzzle');
   $('puzzle-target').textContent = t;
+  renderHintRow();
   $('puzzle-tag').innerHTML = md === 'daily' ? '今日の 1 問'
     : md === 'auto' ? `おまかせ <em>Lv ${auto.L}</em>` : `フリー <em>${digits}</em>`;
   passReset();
