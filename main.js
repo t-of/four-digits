@@ -212,6 +212,37 @@ function showBand(from, gain, day) {
   clearTimeout(bandTimer);
   bandTimer = setTimeout(() => { band.classList.remove('show'); renderCoins(); }, 2000);
 }
+// ★3 のごほうび: 初めての ★3 だけ puzzle.bin の Lv 別（1〜2 → 1、3〜4 → 2、5 → 3）で 1 日 30 まで。
+// 今日の 1 問の ★3 は ＋5（上限の外）。渡した数を返す
+const REWARD_CAP = 30;
+function star3Reward(isFirst, isDaily) {
+  const lv = lvOf(digits, target);
+  let gain = 0;
+  if (isFirst && lv >= 1) {
+    const today = dateKey(new Date());
+    if (coins.day.d !== today) coins.day = { d: today, r: 0 };
+    const base = Math.min(lv >= 5 ? 3 : lv >= 3 ? 2 : 1, REWARD_CAP - coins.day.r);
+    coins.day.r += base; gain += base;
+  }
+  if (isDaily) gain += 5;
+  if (gain) coinAdd(gain);
+  return gain;
+}
+// 星のあとに残高が 1 つずつ増える
+function showReward(gain) {
+  const from = coins.n - gain;
+  const rc = $('r-coin');
+  rc.classList.add('in');
+  sfx.coin();
+  let k = 0;
+  const step = reduceMotion ? gain : 1;
+  const iv = setInterval(() => {
+    k += step;
+    $('r-coin-n').textContent = from + Math.min(k, gain);
+    if (k >= gain) clearInterval(iv);
+  }, 90);
+  timers.push(iv);
+}
 $('coin-chip').addEventListener('click', () => { /* ショップは後で */ });
 
 // =====================================================================
@@ -517,7 +548,10 @@ function finish(k) {
   if (tut) { tut = false; save('tut', true); $('key-plus').classList.remove('hint'); }
   const m = minOf(digits, target);
   const got = starsFor(k, m);
+  const before = starsOf(digits, target);   // saveBest で上書きされる前の星（初めての ★3 の判定）
+  const dailyBefore = daily[dailyDate] || 0;
   const bestStars = saveBest(digits, target, k, text());
+  const reward = got >= 3 ? star3Reward(before < 3, mode === 'daily' && dailyBefore < 3) : 0;
   const record = m < 255 && k < m;
   sfx.hit(); buzz(12);
   renderExpr();
@@ -535,6 +569,9 @@ function finish(k) {
   rs.textContent = sub;
   rs.classList.toggle('record', record);
   $('r-retry').hidden = got >= 3;
+  const rc = $('r-coin');
+  rc.hidden = !reward; rc.classList.remove('in');
+  if (reward) { $('r-coin-n').textContent = coins.n - reward; $('r-coin-plus').textContent = `+${reward}`; }
   $('r-share').hidden = mode !== 'daily';
   $('r-daily').hidden = mode !== 'daily';
   const next = $('r-next');
@@ -566,6 +603,7 @@ function finish(k) {
       if (i < got) sfx.star(i); else sfx.empty();
       if (i === 2 && record) later(() => sfx.record(), 180);
     }, 160 + i * 220));
+    if (reward) later(() => showReward(reward), 160 + 2 * 220 + 200 + (record ? 180 : 0));
   }, wait);
 }
 

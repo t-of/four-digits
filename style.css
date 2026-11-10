@@ -647,6 +647,10 @@ code {
 .result__sub { font-size: var(--fs-2); color: var(--tx2); min-height: 20px; }
 .result__sub.record { color: var(--gold-tx); font-weight: 600; }
 .result__daily { font-size: var(--fs-1); color: var(--tx2); font-feature-settings: "tnum"; }
+.result__coin { display: flex; align-items: center; justify-content: center; gap: 5px; color: var(--tx2); font-size: var(--fs-1); font-variant-numeric: tabular-nums; opacity: 0; transition: opacity 0.25s; }
+.result__coin[hidden] { display: none; }
+.result__coin.in { opacity: 1; }
+.result__coin b { color: var(--tx); font-weight: 600; margin-left: 4px; }
 .result .btn--primary { min-height: 56px; font-size: var(--fs-2); margin-top: 8px; }
 .result__row { display: flex; gap: 8px; }
 .result__row .btn { flex: 1; padding: 0 8px; font-size: var(--fs-2); }
