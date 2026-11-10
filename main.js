@@ -1,5 +1,4 @@
 import { analyze, isTarget, starsFor, formatValue, display } from './src/expr.js';
-import { split, skeleton } from './src/hint.js';
 import { sfx, setSound, unlockOnFirstTouch } from './src/sfx.js';
 
 // =====================================================================
@@ -53,7 +52,6 @@ const lvOf = (n, t) => (minTable ? minTable[n * 100 + t - 1] >> 5 : 0);
 // 記録: four-digits.best = { v: 2, s: { "0123": { "45": [k, "式"] } } }
 // k は式の記号数、式は !{N} を含む打った形のまま。星は k と最小記号数から出す。
 // 旧版（four-digits.stars）から引き継いだ問題は [null, null, 星]。
-// 4 つ目の 1 は、ヒント 2 を使って解いた印（星は ★2 まで）: [k, "式", null, 1]
 // =====================================================================
 let best = {};
 {
@@ -71,7 +69,7 @@ let best = {};
   }
 }
 const entryOf = (digits, t) => (best[digits] && best[digits][t]) || null;
-const starsOfEntry = (digits, t, e) => (e[0] == null ? e[2] : e[3] ? Math.min(2, starsFor(e[0], minOf(digits, t))) : starsFor(e[0], minOf(digits, t)));
+const starsOfEntry = (digits, t, e) => (e[0] == null ? e[2] : starsFor(e[0], minOf(digits, t)));
 const starsOf = (digits, t) => { const e = entryOf(digits, t); return e ? starsOfEntry(digits, t, e) : 0; };
 const starSum = (digits) => {
   const row = best[digits];
@@ -80,16 +78,14 @@ const starSum = (digits) => {
   for (const t of Object.keys(row)) s += starsOfEntry(digits, Number(t), row[t]);
   return s;
 };
-// 解いた式を残す。前より記号数が少なければ更新（同じなら前のまま）。返すのは今の星。
-// ヒント 2 の印（hinted）が前か今にあるときは「星が多いほう、同じなら k が少ないほう」
-function saveBest(digits, t, k, expr, hinted = false) {
+// 解いた式を残す。前より記号数が少なければ更新（同じなら前のまま）。返すのは今の星
+function saveBest(digits, t, k, expr) {
   const old = entryOf(digits, t);
   const oldStars = old ? starsOfEntry(digits, t, old) : 0;
-  const got = hintCap(starsFor(k, minOf(digits, t)), hinted);
-  const better = !old || (old[0] == null ? got >= oldStars
-    : hinted || old[3] ? got > oldStars || (got === oldStars && k < old[0]) : k < old[0]);
+  const got = starsFor(k, minOf(digits, t));
+  const better = !old || (old[0] == null ? got >= oldStars : k < old[0]);
   if (!better) return oldStars;
-  (best[digits] ||= {})[t] = hinted ? [k, expr, null, 1] : [k, expr];
+  (best[digits] ||= {})[t] = [k, expr];
   save('best', { v: 2, s: best });
   return got;
 }
@@ -248,124 +244,6 @@ function showReward(gain) {
   timers.push(iv);
 }
 $('coin-chip').addEventListener('click', () => { /* ショップは後で */ });
-
-// =====================================================================
-// ヒント: four-digits.hints = { v: 1, p: { "0123:45": [ヒント 1 を買ったか 0/1, ヒント 2 で見せた数] } }（300 件まで）
-// ヒント 1 は最短の数 m を目標の下に ○ で出すだけ。星には影響しない。
-// ヒント 2 は最短の式の記号を 1 つずつ（10 コイン）。式は data/expr/NN.txt.gz（上 2 桁ごと）を押したときだけ読む。
-// ヒント 2 を 1 つでも使った問題は ★2 まで（hintCap）。ヒント 2 を買うとヒント 1 も分かる
-// =====================================================================
-const HINT1_COST = 3, HINT2_COST = 10, HINT_MAX = 300;
-const hints = (() => {
-  const d = load('hints', null);
-  return d && d.v === 1 && d.p && typeof d.p === 'object' ? d.p : {};
-})();
-const hintKey = () => `${digits}:${target}`;
-const hasHint1 = () => !!(hints[hintKey()] && hints[hintKey()][0]);
-const hint2Count = () => (hints[hintKey()] && hints[hintKey()][1]) || 0;
-const hint2Used = () => hint2Count() > 0;
-const hintCap = (stars, hinted) => (hinted ? Math.min(2, stars) : stars);
-function putHint(e) {
-  const k = hintKey();
-  delete hints[k]; hints[k] = e;   // 新しいものを後ろへ
-  for (const old of Object.keys(hints)) { if (Object.keys(hints).length <= HINT_MAX) break; delete hints[old]; }
-  save('hints', { v: 1, p: hints });
-}
-const buyHint1 = () => putHint([1, hint2Count()]);
-const buyHint2 = () => putHint([1, hint2Count() + 1]);
-
-// 最短の式: 上 2 桁のファイルを読んで行番号 (4 桁 % 100) × 100 + (目標 − 1) の行を返す。読めなければ null
-const exprFiles = new Map();   // "00" → Promise<行の配列 | null>
-function exprFile(pp) {
-  if (!exprFiles.has(pp)) {
-    const p = (async () => {
-      if (typeof DecompressionStream === 'undefined') return null;
-      const res = await fetch(`./data/expr/${pp}.txt.gz`);
-      if (!res.ok) return null;
-      let buf = new Uint8Array(await res.arrayBuffer());
-      if (buf[0] === 0x1f && buf[1] === 0x8b) {   // サーバーが先に展開していたら、そのまま読む
-        const ds = new Blob([buf]).stream().pipeThrough(new DecompressionStream('gzip'));
-        buf = new Uint8Array(await new Response(ds).arrayBuffer());
-      }
-      const lines = new TextDecoder().decode(buf).split('\n');
-      if (lines[lines.length - 1] === '') lines.pop();
-      return lines.length === 10000 ? lines : null;
-    })().catch(() => null);
-    exprFiles.set(pp, p);
-    p.then((r) => { if (!r) exprFiles.delete(pp); });   // 失敗は覚えない（次に押したとき読み直す）
-  }
-  return exprFiles.get(pp);
-}
-async function shortestExpr(d, t) {
-  const lines = await exprFile(d.slice(0, 2));
-  return lines ? lines[(Number(d) % 100) * 100 + t - 1] || null : null;
-}
-
-// 目標の下の骨組みの行。ヒント 2 を使っていれば、数字の板と見せた記号と、まだの ○
-let hintRowSeq = 0;
-function drawHintRow(row, parts, rest) {
-  row.replaceChildren();
-  for (const p of parts) {
-    const s = document.createElement('span');
-    s.className = p.d !== undefined ? 'hp' : 'hs';
-    s.textContent = p.d !== undefined ? p.d : p.v;
-    row.append(s);
-  }
-  if (rest) { const s = document.createElement('span'); s.className = 'ho'; s.textContent = '○'.repeat(rest); row.append(s); }
-}
-async function renderHintRow() {
-  const row = $('hint-row');
-  const m = minOf(digits, target);
-  const on = hasHint1() && m < 255;
-  row.hidden = !on;
-  if (!on) { row.replaceChildren(); return; }
-  drawHintRow(row, [], m);
-  const n = hint2Count();
-  if (!n) return;
-  const seq = ++hintRowSeq, k = hintKey();
-  const e = await shortestExpr(digits, target);
-  if (!e || seq !== hintRowSeq || k !== hintKey()) return;
-  const sk = skeleton(e, n);
-  drawHintRow(row, sk.parts, sk.rest);
-}
-// ヒント 2 の行が使えるか: 最短が 2 つ以上あり、見せていない記号が 2 つ以上残っていて、読める環境
-const hint2Left = () => { const m = minOf(digits, target); return m < 255 ? m - 1 - hint2Count() : 0; };
-let hint2Dead = false;   // 読めなかった（圏外で未キャッシュなど）。次にシートを開くまで押せない
-function renderHintSheet() {
-  $('hint-n').textContent = coins.n;
-  $('hint-1').classList.toggle('dim', coins.n < HINT1_COST && !hasHint1());
-  $('hint-1-cost').hidden = hasHint1();
-  const m = minOf(digits, target);
-  $('hint-1-eg').textContent = '○'.repeat(hasHint1() && m < 255 ? m : 3);
-  const h2 = $('hint-2');
-  h2.hidden = hint2Left() <= 0;
-  h2.classList.toggle('dim', coins.n < HINT2_COST || hint2Dead || typeof DecompressionStream === 'undefined');
-  // 絵はこの問題の数字。記号の場所は □
-  $('hint-2-eg').textContent = `${digits[0]} ${digits[1]} □ ${digits[2]} ${digits[3]}`;
-}
-$('puzzle-hint').addEventListener('click', () => { hint2Dead = false; sfx.tap(); renderHintSheet(); openSheet('hint'); });
-$('hint-1').addEventListener('click', () => {
-  if (hasHint1() || minOf(digits, target) >= 255) { sfx.tap(); closeSheet(); return; }
-  if (!coinSpend(HINT1_COST)) { sfx.nope(); return; }
-  sfx.pay(); buyHint1();
-  renderHintRow(); closeSheet();
-});
-let hint2Busy = false;
-$('hint-2').addEventListener('click', async () => {
-  if (hint2Busy) return;
-  if (hint2Left() <= 0 || hint2Dead || typeof DecompressionStream === 'undefined' || coins.n < HINT2_COST) { sfx.nope(); return; }
-  hint2Busy = true;
-  const k = hintKey();
-  const e = await shortestExpr(digits, target);   // 読めてからコインを引く
-  hint2Busy = false;
-  if (k !== hintKey()) return;
-  if (!e || split(e).items.length !== minOf(digits, target) || !coinSpend(HINT2_COST)) {
-    if (!e) { hint2Dead = true; $('hint-2').classList.add('dim'); }
-    sfx.nope(); return;
-  }
-  sfx.pay(); buyHint2();
-  renderHintRow(); closeSheet();
-});
 
 // =====================================================================
 // 今日の 1 問: four-digits.daily = { "2026-11-06": 星, … }（解いた日だけ。その日の最高）
@@ -598,7 +476,6 @@ function openPuzzle(t, md = 'free') {
   resetPad();
   show('puzzle');
   $('puzzle-target').textContent = t;
-  renderHintRow();
   $('puzzle-tag').innerHTML = md === 'daily' ? '今日の 1 問'
     : md === 'auto' ? `おまかせ <em>Lv ${auto.L}</em>` : `フリー <em>${digits}</em>`;
   passReset();
@@ -702,11 +579,10 @@ function finish(k) {
   solved = true;
   if (tut) { tut = false; save('tut', true); $('key-plus').classList.remove('hint'); }
   const m = minOf(digits, target);
-  const hinted = hint2Used();
-  const got = hintCap(starsFor(k, m), hinted);   // ヒント 2 を使った問題は ★2 まで（おまかせ・今日の 1 問・ごほうびも ★2 扱い）
+  const got = starsFor(k, m);
   const before = starsOf(digits, target);   // saveBest で上書きされる前の星（初めての ★3 の判定）
   const dailyBefore = daily[dailyDate] || 0;
-  const bestStars = saveBest(digits, target, k, text(), hinted);
+  const bestStars = saveBest(digits, target, k, text());
   const reward = got >= 3 ? star3Reward(before < 3, mode === 'daily' && dailyBefore < 3) : 0;
   const record = m < 255 && k < m;
   sfx.hit(); buzz(12);
