@@ -9,9 +9,11 @@
 // ブラウザの HTTP キャッシュを通さない（install は reload、fetch は no-cache）。古い main.js と新しい index.html が混ざって動かなくなるのを防ぐ。
 
 const PREFIX = 'four-digits-';
-const VERSION = 'v27';
+const VERSION = 'v28';
 const CACHE = `${PREFIX}${VERSION}`;
 const FONT_CACHE = `${PREFIX}fonts`;
+// ヒント 2 の式（data/expr/*.txt.gz、約 3 MB）。版ごとには消さない。SHELL には入れず、押したときに初めて読んで cache-first で残す
+const EXPR_CACHE = `${PREFIX}expr-v1`;
 
 const SHELL = [
   './',
@@ -19,6 +21,7 @@ const SHELL = [
   './style.css',
   './main.js',
   './src/expr.js',
+  './src/hint.js',
   './src/sfx.js',
   './data/puzzle.bin',
   './fonts/jost.woff2',
@@ -38,7 +41,7 @@ self.addEventListener('install', (e) => {
 self.addEventListener('activate', (e) => {
   e.waitUntil(caches.keys()
     .then((keys) => Promise.all(keys
-      .filter((k) => k.startsWith(PREFIX) && k !== CACHE && k !== FONT_CACHE)
+      .filter((k) => k.startsWith(PREFIX) && k !== CACHE && k !== FONT_CACHE && k !== EXPR_CACHE)
       .map((k) => caches.delete(k))))
     .then(() => self.clients.claim()));
 });
@@ -47,7 +50,9 @@ self.addEventListener('fetch', (e) => {
   const req = e.request;
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
-  if (url.origin === location.origin) {
+  if (url.origin === location.origin && url.pathname.includes('/data/expr/')) {
+    e.respondWith(cacheFirst(req, EXPR_CACHE));
+  } else if (url.origin === location.origin) {
     e.respondWith(networkFirst(req));
   } else if (url.hostname === 'fonts.googleapis.com' || url.hostname === 'fonts.gstatic.com') {
     e.respondWith(cacheFirst(req, FONT_CACHE));
