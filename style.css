@@ -296,6 +296,10 @@ code {
   font-size: var(--fs-1);
 }
 
+.pill.lang { display: inline-flex; align-items: center; gap: 6px; padding: 0 10px; }
+.pill.lang button { color: var(--tx3); min-height: 34px; padding: 0 2px; }
+.pill.lang button[aria-pressed="true"] { color: var(--tx); font-weight: 600; }
+
 .chip {
   min-width: 44px;
   min-height: 38px;

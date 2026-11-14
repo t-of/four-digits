@@ -2,6 +2,15 @@ import { analyze, isTarget, starsFor, formatValue, display } from './src/expr.js
 import { sfx, setSound, unlockOnFirstTouch } from './src/sfx.js';
 import * as Rewards from './src/rewards.js';
 
+// 画面の言葉。L('日本語', 'English') で、起動時に決めた言語のほうを使う（i18n.js）
+const L = I18n.L;
+// 記号の個数（英語は 1 symbol / 2 symbols）
+const symN = (k) => L(`記号 ${k}`, `${k} symbol${k === 1 ? '' : 's'}`);
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const dayName = (mo, da) => L(`${Number(mo)}月${Number(da)}日`, `${MONTHS[Number(mo) - 1]} ${Number(da)}`);
+const streakName = (n) => L(`${n} 日連続`, `${n}-day streak`);
+const nextIn = () => L(`次の問題まで ${untilTomorrow()}`, `Next in ${untilTomorrow()}`);
+
 // =====================================================================
 // 保存（localStorage はほかのアプリと共有。キーは必ず 'four-digits.' で始める）
 // =====================================================================
@@ -16,7 +25,7 @@ function save(key, value) {
   try { localStorage.setItem(STORE + key, JSON.stringify(value)); } catch { /* 保存できなくても遊べる */ }
 }
 
-WebAppKit.init({ title: 'SHORT MATH', text: '4つの数字を、いちばん短い式で。1〜100を作るテンパズル。' });
+WebAppKit.init({ title: 'SHORT MATH', text: L('4つの数字を、いちばん短い式で。1〜100を作るテンパズル。', 'Four digits, the shortest expression. A puzzle to make 1 to 100.'), lang: I18n.lang });
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');
 
 const $ = (id) => document.getElementById(id);
@@ -446,7 +455,7 @@ function stopClock() { clearInterval(clock); clock = 0; }
 function renderDailyCard() {
   dailyDate = dateKey(new Date());
   const [, mo, da] = dailyDate.split('-');
-  $('daily-date').textContent = `${Number(mo)}月${Number(da)}日`;
+  $('daily-date').textContent = dayName(mo, da);
   const s = daily[dailyDate] || 0;
   const st = $('daily-st');
   st.textContent = starStr(s);
@@ -454,13 +463,13 @@ function renderDailyCard() {
   const gn = guardable();
   const streak = gn || dailyStreak();
   const parts = [];
-  if (streak) parts.push(`${streak} 日連続`);
-  if (s) parts.push(`次の問題まで ${untilTomorrow()}`);
+  if (streak) parts.push(streakName(streak));
+  if (s) parts.push(nextIn());
   $('daily-meta').textContent = parts.join(' ・ ');
   $('daily-meta').classList.toggle('broken', !!gn);
   const gPay = coins.n >= GUARD_COST;
   $('guard-btn').hidden = !(gn && (gPay || Rewards.available()));
-  $('guard-btn').innerHTML = gPay ? `${COIN_SVG}${GUARD_COST} で守る` : '▶ で守る';
+  $('guard-btn').innerHTML = gPay ? `${COIN_SVG}${GUARD_COST} ${L('で守る', 'Keep streak')}` : `▶ ${L('で守る', 'Keep streak')}`;
   $('daily-btn').classList.toggle('is-done', s > 0);
 }
 
@@ -513,6 +522,12 @@ function renderSound() {
 }
 renderSound();
 
+// 言語: ホームの「日本語 / English」。選ぶと four-digits.lang に覚えて読み込み直す（i18n.js）
+for (const b of $('lang-seg').querySelectorAll('button')) {
+  b.setAttribute('aria-pressed', String(b.dataset.v === I18n.lang));
+  b.addEventListener('click', () => I18n.set(b.dataset.v));
+}
+
 // ---- 配色: four-digits.theme = "light" | "dark"（押すまでは保存せず端末の設定に合わせる） ----
 const darkNow = () => {
   const t = document.documentElement.getAttribute('data-theme');
@@ -527,7 +542,7 @@ function renderTheme() {
   const dark = darkNow();
   const b = $('theme-btn');
   b.classList.toggle('is-dark', dark);
-  b.setAttribute('aria-label', dark ? '明るい配色にする' : '暗い配色にする');
+  b.setAttribute('aria-label', dark ? I18n.HTML.themeLight : I18n.HTML.themeDark);
 }
 renderTheme();
 applyPal();
@@ -578,8 +593,8 @@ function openPuzzle(t, md = 'free') {
   resetPad();
   show('puzzle');
   $('puzzle-target').textContent = t;
-  $('puzzle-tag').innerHTML = md === 'daily' ? '今日の 1 問'
-    : md === 'auto' ? `おまかせ <em>Lv ${auto.L}</em>` : `フリー <em>${digits}</em>`;
+  $('puzzle-tag').innerHTML = md === 'daily' ? L('今日の 1 問', 'Daily puzzle')
+    : md === 'auto' ? `${L('おまかせ', 'Auto')} <em>Lv ${auto.L}</em>` : `${L('フリー', 'Free')} <em>${digits}</em>`;
   passReset();
   $('giveup').hidden = md !== 'auto';
   $('expr').classList.remove('won');
@@ -591,7 +606,7 @@ function showMine() {
   const e = entryOf(digits, target);
   const el = $('mine');
   if (!e) { el.textContent = ''; return; }
-  el.textContent = e[0] == null ? '✓' : `式 ${display(e[1])}`;
+  el.textContent = e[0] == null ? '✓' : `${L('式', 'Best')} ${display(e[1])}`;
 }
 
 // 数字のかたまり（数字と、数字にはさまれた小数点）は 1 枚の板に見せる
@@ -662,7 +677,7 @@ function update(first = false) {
     val.classList.add('dim');
   }
   const k = a.symbols;
-  $('count').textContent = `記号 ${k}`;
+  $('count').textContent = symN(k);
   if (!first && !solved && text() !== locked && a.status === 'ok' && a.complete && isTarget(a.value, target)) finish(k);
 }
 
@@ -704,8 +719,8 @@ function finish(k) {
 
   // 結果パネルの中身
   $('r-stars').innerHTML = [0, 1, 2].map((i) => `<span class="st ${i < got ? 'on' : 'off'}">★</span>`).join('');
-  $('r-text').textContent = got >= 3 || !(m < 255) ? `記号 ${k}` : `記号 ${k} ・ 最短 ${m}`;
-  let sub = record ? '最小を更新！' : '';
+  $('r-text').textContent = got >= 3 || !(m < 255) ? symN(k) : `${symN(k)} ・ ${L('最短', 'min')} ${m}`;
+  let sub = record ? L('最小を更新！', 'New best!') : '';
   const rs = $('r-sub');
   rs.textContent = sub;
   rs.classList.toggle('record', record);
@@ -718,19 +733,20 @@ function finish(k) {
   const next = $('r-next');
   if (mode === 'auto') {
     const dl = autoSolved(got);
-    next.textContent = '次の 1 問';
+    next.textContent = L('次の 1 問', 'Next puzzle');
     if (dl) sub = [sub, `Lv ${auto.L} ${dl > 0 ? '↑' : '↓'}`].filter(Boolean).join(' ・ ');
     rs.textContent = sub;
   } else if (mode === 'daily') {
     if (bestStars > (daily[dailyDate] || 0)) { daily[dailyDate] = bestStars; save('daily', daily); }
     const streak = dailyStreak();
-    $('r-daily').textContent = `${streak} 日連続 ・ 次の問題まで ${untilTomorrow()}`;
+    $('r-daily').textContent = `${streakName(streak)} ・ ${nextIn()}`;
     const [, mo, da] = dailyDate.split('-');
-    lastShare = `SHORT MATH 今日の1問 ${Number(mo)}/${Number(da)}\n${starStr(bestStars)} 記号 ${k} 個${streak > 1 ? `（${streak} 日連続）` : ''}`;
-    next.textContent = 'おまかせで続ける';
+    lastShare = L(`SHORT MATH 今日の1問 ${Number(mo)}/${Number(da)}\n${starStr(bestStars)} 記号 ${k} 個${streak > 1 ? `（${streak} 日連続）` : ''}`,
+      `SHORT MATH Daily puzzle ${dayName(mo, da)}\n${starStr(bestStars)} ${symN(k)}${streak > 1 ? ` (${streakName(streak)})` : ''}`);
+    next.textContent = L('おまかせで続ける', 'Continue in Auto');
   } else {
     const nt = nextOpen();
-    next.textContent = nt ? '次へ' : '制覇！';
+    next.textContent = nt ? L('次へ', 'Next') : L('制覇！', 'Complete!');
     next.dataset.t = nt;
   }
 
@@ -851,7 +867,7 @@ const KEEP_COST = 5;
 let splitTimer = 0;
 function passReset() {
   clearTimeout(splitTimer); splitTimer = 0;
-  $('giveup').textContent = 'パス';
+  $('giveup').textContent = L('パス', 'Pass');
   $('giveup-keep').hidden = true;
 }
 function passDone(keep) {
@@ -859,7 +875,7 @@ function passDone(keep) {
   passReset();
   if (keep) { auto.streak = 0; autoPush(); saveAuto(); sfx.pay(); }
   else { sfx.del(); autoGiveUp(); }
-  toast(keep ? `Lv ${was} のまま` : auto.L === was ? 'パス' : `パス ・ Lv ${was} → ${auto.L}`, 2400);
+  toast(keep ? L(`Lv ${was} のまま`, `Staying at Lv ${was}`) : auto.L === was ? L('パス', 'Pass') : `${L('パス', 'Pass')} ・ Lv ${was} → ${auto.L}`, 2400);
   openAuto();
 }
 $('giveup').addEventListener('click', () => {
@@ -958,12 +974,12 @@ function openBoard(d, from = 'free') {
   for (let t = 1; t <= 100; t++) {
     const st = starsOf(d, t);
     if (st === 3) n3++;
-    html += `<button class="cell s${st}" data-t="${t}" aria-label="${t}（${st ? `星 ${st}` : '未'}）"><b>${t}</b><small>${'<i></i>'.repeat(3)}</small></button>`;
+    html += `<button class="cell s${st}" data-t="${t}" aria-label="${t}${L('（', ' (')}${st ? L(`星 ${st}`, `${st} star${st === 1 ? '' : 's'}`) : L('未', 'unsolved')}${L('）', ')')}"><b>${t}</b><small>${'<i></i>'.repeat(3)}</small></button>`;
   }
   $('board-grid').innerHTML = html;
   $('board-bar').style.width = `${(s / 300) * 100}%`;
   $('board-stars').innerHTML = `<b>★ ${s}</b> / 300`;
-  $('board-full').innerHTML = n3 === 100 ? '制覇！' : `<span class="b3">★★★</span> ${n3} / 100`;
+  $('board-full').innerHTML = n3 === 100 ? L('制覇！', 'Complete!') : `<span class="b3">★★★</span> ${n3} / 100`;
 }
 $('board-grid').addEventListener('click', (e) => {
   const b = e.target.closest('[data-t]');
@@ -981,7 +997,7 @@ function openZukan() {
   show('zukan');
   const tt = totals();
   $('z-stats').innerHTML = [
-    ['解いた', tt.solved], ['★3', tt.three], ['4 桁', tt.played], ['制覇', tt.full],
+    [L('解いた', 'Solved'), tt.solved], ['★3', tt.three], [L('4 桁', '4 digits'), tt.played], [L('制覇', 'Complete'), tt.full],
   ].map(([k, v]) => `<div class="stat"><b>${v}</b><small>${k}</small></div>`).join('');
   for (const b of document.querySelectorAll('.tab')) b.classList.toggle('on', b.dataset.tab === tab);
   if (tab === 'digits') renderDigitsTab(); else if (numPick) renderNumberDetail(); else renderNumbersTab();
@@ -989,13 +1005,13 @@ function openZukan() {
 
 function renderDigitsTab() {
   const ds = Object.keys(best).filter((d) => Object.keys(best[d]).length).sort();
-  if (!ds.length) { zbody.innerHTML = '<div class="zempty">まだ空っぽ</div>'; return; }
+  if (!ds.length) { zbody.innerHTML = `<div class="zempty">${L('まだ空っぽ', 'Nothing yet')}</div>`; return; }
   let cards = '';
   for (const d of ds) {
     let n3 = 0;
     for (let t = 1; t <= 100; t++) if (starsOf(d, t) === 3) n3++;
     const gold = n3 === 100;
-    cards += `<button class="zcard${gold ? ' gold' : ''}" data-n="${d}"><span class="zcard__head"><b>${d}</b><small>${gold ? '制覇' : `★ ${starSum(d)}`}</small></span>${miniMap(d)}</button>`;
+    cards += `<button class="zcard${gold ? ' gold' : ''}" data-n="${d}"><span class="zcard__head"><b>${d}</b><small>${gold ? L('制覇', 'Complete') : `★ ${starSum(d)}`}</small></span>${miniMap(d)}</button>`;
   }
   zbody.innerHTML = `<div class="zcards">${cards}</div>`;
 }
@@ -1012,7 +1028,7 @@ function renderNumbersTab() {
     const c = makersOf(t).length;
     cells += `<button class="cell num${c ? ' has' : ''}" data-t="${t}"><b>${t}</b><small>${c || ''}</small></button>`;
   }
-  zbody.innerHTML = `<p class="zlead">その数を、何種類の 4 桁から作ったか</p><div class="grid100">${cells}</div>`;
+  zbody.innerHTML = `<p class="zlead">${L('その数を、何種類の 4 桁から作ったか', 'How many 4-digit sets made each number')}</p><div class="grid100">${cells}</div>`;
 }
 
 function renderNumberDetail() {
@@ -1022,7 +1038,7 @@ function renderNumberDetail() {
     const s = starsOfEntry(d, numPick, e);
     rows += `<button class="mk" data-n="${d}"><b>${d}</b><span>${e[1] ? display(e[1]) : '—'}</span><small class="s${s}">${starStr(s)}</small></button>`;
   }
-  zbody.innerHTML = `<div class="zhead"><button class="link-btn" id="num-back">‹ 数の一覧</button><b class="zbig">${numPick}</b></div>`
+  zbody.innerHTML = `<div class="zhead"><button class="link-btn" id="num-back">${L('‹ 数の一覧', '‹ All numbers')}</button><b class="zbig">${numPick}</b></div>`
     + (rows ? `<div class="mks">${rows}</div>` : '<div class="zempty">—</div>');
 }
 

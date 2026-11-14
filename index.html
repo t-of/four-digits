@@ -52,13 +52,13 @@
     <section class="screen home" id="s-home">
       <div class="home__top">
         <div class="purse">
-          <button class="coin-chip" id="coin-chip" aria-label="コイン"><svg class="coin" viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="10.5" rx="8.5" ry="5.5"/><path d="M3.5 10.5v3c0 3 3.8 5.5 8.5 5.5s8.5-2.5 8.5-5.5v-3"/></svg><span id="coin-n">0</span></button>
+          <button class="coin-chip" id="coin-chip" data-i18n-aria="coin" aria-label="コイン"><svg class="coin" viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="10.5" rx="8.5" ry="5.5"/><path d="M3.5 10.5v3c0 3 3.8 5.5 8.5 5.5s8.5-2.5 8.5-5.5v-3"/></svg><span id="coin-n">0</span></button>
           <div class="coin-band" id="coin-band" aria-hidden="true"><b id="coin-plus"></b><span id="coin-dots"></span></div>
         </div>
         <button class="icon-btn" id="theme-btn" aria-label="明るい配色にする">
           <svg viewBox="0 0 24 24" aria-hidden="true"><g class="sun"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/></g><path class="moon" d="M19 14.5A7.5 7.5 0 019.5 5a7.5 7.5 0 109.5 9.5z"/></svg>
         </button>
-        <button class="icon-btn" id="sound-btn" aria-label="効果音" aria-pressed="true">
+        <button class="icon-btn" id="sound-btn" data-i18n-aria="sound" aria-label="効果音" aria-pressed="true">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h3.5L12 6v12l-4.5-3.5H4z"/><path class="on" d="M15.5 9a4 4 0 010 6M18 6.5a7.5 7.5 0 010 11"/><path class="off" d="M16 9.5l5 5M21 9.5l-5 5"/></svg>
         </button>
       </div>
@@ -70,8 +70,8 @@
       <div class="home__cards">
         <button class="card card--play" id="auto-btn">
           <span class="card__row">
-            <span class="card__label">おまかせ</span>
-            <span class="lvmeter" id="auto-lv" aria-label="難しさ"></span>
+            <span class="card__label" data-i18n="auto">おまかせ</span>
+            <span class="lvmeter" id="auto-lv" data-i18n-aria="level" aria-label="難しさ"></span>
           </span>
           <span class="preview" id="auto-preview" aria-hidden="true">
             <span class="preview__digits" id="auto-digits">····</span>
@@ -83,7 +83,7 @@
         <div class="daily-wrap">
         <button class="card card--daily" id="daily-btn">
           <span class="card__row">
-            <span class="card__label">今日の 1 問</span>
+            <span class="card__label" data-i18n="daily">今日の 1 問</span>
             <span class="card__date" id="daily-date"></span>
           </span>
           <span class="daily__body">
@@ -96,11 +96,11 @@
 
         <div class="card-pair">
           <button class="card card--mini" id="free-btn">
-            <span class="card__label">フリー</span>
+            <span class="card__label" data-i18n="free">フリー</span>
             
           </button>
           <button class="card card--mini" id="zukan-btn">
-            <span class="card__label">図鑑</span>
+            <span class="card__label" data-i18n="zukan">図鑑</span>
             <span class="card__sub" id="zukan-sub"></span>
           </button>
         </div>
@@ -109,22 +109,23 @@
 
       <footer class="credit">
         <div class="credit__kit">
-          <button class="pill" data-wak="install" hidden>アプリにする</button>
-          <button class="pill" data-wak="share">共有</button>
+          <button class="pill" data-wak="install" data-i18n="install" hidden>アプリにする</button>
+          <button class="pill" data-wak="share" data-i18n="share">共有</button>
+          <span class="pill lang" id="lang-seg" role="group" aria-label="言語 / Language"><button type="button" data-v="ja" lang="ja">日本語</button><span aria-hidden="true">/</span><button type="button" data-v="en" lang="en">English</button></span>
         </div>
-        <div><a href="/">T.OF...</a> ・ <a href="https://t-of.github.io/contact/">問い合わせ</a> ・ <span class="ver">v41</span></div>
+        <div><a href="/">T.OF...</a> ・ <a href="https://t-of.github.io/contact/"><span data-i18n="contact">問い合わせ</span></a> ・ <span class="ver">v42</span></div>
       </footer>
     </section>
 
     <!-- ========== パズル ========== -->
     <section class="screen puzzle" id="s-puzzle" hidden>
       <header class="topbar">
-        <button class="icon-btn" id="puzzle-back" aria-label="戻る">
+        <button class="icon-btn" id="puzzle-back" data-i18n-aria="back" aria-label="戻る">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
         </button>
         <div class="topbar__title" id="puzzle-tag"></div>
-        <div class="coin-chip p-coin" id="p-coin" aria-label="コイン"><svg class="coin" viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="10.5" rx="8.5" ry="5.5"/><path d="M3.5 10.5v3c0 3 3.8 5.5 8.5 5.5s8.5-2.5 8.5-5.5v-3"/></svg><span id="p-coin-n">0</span><b class="p-coin__plus" id="p-coin-plus" aria-hidden="true"></b></div>
-        <button class="icon-btn" id="puzzle-help" aria-label="遊び方と記号">
+        <div class="coin-chip p-coin" id="p-coin" data-i18n-aria="coin" aria-label="コイン"><svg class="coin" viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="10.5" rx="8.5" ry="5.5"/><path d="M3.5 10.5v3c0 3 3.8 5.5 8.5 5.5s8.5-2.5 8.5-5.5v-3"/></svg><span id="p-coin-n">0</span><b class="p-coin__plus" id="p-coin-plus" aria-hidden="true"></b></div>
+        <button class="icon-btn" id="puzzle-help" data-i18n-aria="help" aria-label="遊び方と記号">
           <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.3a2.6 2.6 0 015 .9c0 1.7-2.5 2.2-2.5 3.8"/><circle cx="12" cy="17.2" r=".6" class="fill"/></svg>
         </button>
       </header>
@@ -133,7 +134,7 @@
         <div class="goal">
           <span class="goal__num" id="puzzle-target"></span>
         </div>
-        <div class="expr" id="expr" aria-live="polite" aria-label="式"></div>
+        <div class="expr" id="expr" aria-live="polite" data-i18n-aria="expr" aria-label="式"></div>
         <div class="value" id="value"></div>
         <div class="meta">
           <span class="count" id="count"></span>
@@ -144,26 +145,26 @@
       <div class="pad" id="pad">
         <div class="keys" id="keys">
           <button class="key key--op" id="key-plus" data-ch="+">+</button>
-          <button class="key key--op" data-ch="−" aria-label="引く・マイナス">−</button>
+          <button class="key key--op" data-ch="−" data-i18n-aria="minus" aria-label="引く・マイナス">−</button>
           <button class="key key--op" data-ch="×">×</button>
           <button class="key key--op" data-ch="÷">÷</button>
-          <button class="key key--fn" data-key="back" id="key-back" aria-label="カーソルの前の記号を消す">
+          <button class="key key--fn" data-key="back" id="key-back" data-i18n-aria="delSym" aria-label="カーソルの前の記号を消す">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5h11v14H9l-6-7z"/><path d="M12.5 9.5l5 5M17.5 9.5l-5 5"/></svg>
           </button>
           <button class="key" data-ch="(">(</button>
           <button class="key" data-ch=")">)</button>
-          <button class="key" data-ch="^" aria-label="累乗"><span>x<sup>y</sup></span></button>
-          <button class="key" data-ch="√" aria-label="平方根">√</button>
-          <button class="key" data-ch="." aria-label="小数点">.</button>
-          <button class="key key--mv" data-key="left" id="key-left" aria-label="カーソルを左へ">
+          <button class="key" data-ch="^" data-i18n-aria="pow" aria-label="累乗"><span>x<sup>y</sup></span></button>
+          <button class="key" data-ch="√" data-i18n-aria="sqrt" aria-label="平方根">√</button>
+          <button class="key" data-ch="." data-i18n-aria="dot" aria-label="小数点">.</button>
+          <button class="key key--mv" data-key="left" id="key-left" data-i18n-aria="left" aria-label="カーソルを左へ">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 6l-6 6 6 6"/></svg>
           </button>
-          <button class="key key--fact" data-ch="!" aria-label="階乗">!</button>
-          <button class="key key--fact" data-key="factn" aria-label="N 重階乗"><span>!<sup>N</sup></span></button>
-          <button class="key key--mv" data-key="right" id="key-right" aria-label="カーソルを右へ">
+          <button class="key key--fact" data-ch="!" data-i18n-aria="fact" aria-label="階乗">!</button>
+          <button class="key key--fact" data-key="factn" data-i18n-aria="factN" aria-label="N 重階乗"><span>!<sup>N</sup></span></button>
+          <button class="key key--mv" data-key="right" id="key-right" data-i18n-aria="right" aria-label="カーソルを右へ">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 6l6 6-6 6"/></svg>
           </button>
-          <button class="key key--fn" data-key="clear" aria-label="記号を全部消す">
+          <button class="key key--fn" data-key="clear" data-i18n-aria="clearAll" aria-label="記号を全部消す">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12a7 7 0 1 0 2.1-5"/><path d="M5 4v4h4"/></svg>
           </button>
         </div>
@@ -173,14 +174,14 @@
               <span class="nsel__eg" id="n-eg"></span>
           </div>
           <div class="nsel__dial">
-            <button class="key" id="n-minus" aria-label="N を減らす">−</button>
+            <button class="key" id="n-minus" data-i18n-aria="nMinus" aria-label="N を減らす">−</button>
             <input id="n-input" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" value="2" aria-label="N">
-            <button class="key" id="n-plus" aria-label="N を増やす">+</button>
+            <button class="key" id="n-plus" data-i18n-aria="nPlus" aria-label="N を増やす">+</button>
           </div>
           <div class="nsel__chips" id="n-chips"></div>
           <div class="nsel__acts">
-            <button class="key" id="n-cancel">やめる</button>
-            <button class="key key--primary" id="n-ok">入れる</button>
+            <button class="key" id="n-cancel" data-i18n="cancel">やめる</button>
+            <button class="key key--primary" id="n-ok" data-i18n="add">入れる</button>
           </div>
         </div>
 
@@ -190,31 +191,31 @@
           <div class="result__sub" id="r-sub"></div>
           <div class="result__daily" id="r-daily" hidden></div>
           <div class="result__coin" id="r-coin" hidden><svg class="coin" viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="10.5" rx="8.5" ry="5.5"/><path d="M3.5 10.5v3c0 3 3.8 5.5 8.5 5.5s8.5-2.5 8.5-5.5v-3"/></svg><span id="r-coin-n">×0</span></div>
-          <button class="btn btn--primary" id="r-next">次へ</button>
+          <button class="btn btn--primary" id="r-next" data-i18n="next">次へ</button>
           <div class="result__row">
-            <button class="btn btn--ink" id="r-retry">もっと短く</button>
-            <button class="btn" id="r-share" hidden>結果を共有</button>
+            <button class="btn btn--ink" id="r-retry" data-i18n="shorter">もっと短く</button>
+            <button class="btn" id="r-share" data-i18n="shareResult" hidden>結果を共有</button>
           </div>
         </div>
 
-        <div class="passrow"><button class="pass" id="giveup" hidden>パス</button><button class="pass pass--keep" id="giveup-keep" hidden></button></div>
+        <div class="passrow"><button class="pass" id="giveup" data-i18n="pass" hidden>パス</button><button class="pass pass--keep" id="giveup-keep" hidden></button></div>
       </div>
     </section>
 
     <!-- ========== フリー（4 桁を選ぶ） ========== -->
     <section class="screen free" id="s-free" hidden>
       <header class="topbar">
-        <button class="icon-btn" id="free-back" aria-label="ホームへ">
+        <button class="icon-btn" id="free-back" data-i18n-aria="toHome" aria-label="ホームへ">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
         </button>
-        <div class="topbar__title">フリー</div>
+        <div class="topbar__title" data-i18n="free">フリー</div>
         <span class="icon-btn icon-btn--ghost"></span>
       </header>
 
       <div class="free__body">
-        <div class="slots" id="slots" aria-label="選んだ 4 桁"></div>
+        <div class="slots" id="slots" data-i18n-aria="picked" aria-label="選んだ 4 桁"></div>
         <div class="free__preview" id="free-preview"></div>
-        <button class="btn btn--primary" id="free-go" disabled>遊ぶ</button>
+        <button class="btn btn--primary" id="free-go" data-i18n="play" disabled>遊ぶ</button>
         <div class="recent" id="recent"></div>
       </div>
 
@@ -222,10 +223,10 @@
         <button class="key" data-d="1">1</button><button class="key" data-d="2">2</button><button class="key" data-d="3">3</button>
         <button class="key" data-d="4">4</button><button class="key" data-d="5">5</button><button class="key" data-d="6">6</button>
         <button class="key" data-d="7">7</button><button class="key" data-d="8">8</button><button class="key" data-d="9">9</button>
-        <button class="key key--fn" data-d="rand" aria-label="ランダム">
+        <button class="key key--fn" data-d="rand" data-i18n-aria="random" aria-label="ランダム">
           <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"/><circle class="fill" cx="9" cy="9" r="1.2"/><circle class="fill" cx="15" cy="9" r="1.2"/><circle class="fill" cx="12" cy="12" r="1.2"/><circle class="fill" cx="9" cy="15" r="1.2"/><circle class="fill" cx="15" cy="15" r="1.2"/></svg>
         </button><button class="key" data-d="0">0</button>
-        <button class="key key--fn" data-d="back" aria-label="1 文字消す">
+        <button class="key key--fn" data-d="back" data-i18n-aria="del1" aria-label="1 文字消す">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5h11v14H9l-6-7z"/><path d="M12.5 9.5l5 5M17.5 9.5l-5 5"/></svg>
         </button>
       </div>
@@ -234,7 +235,7 @@
     <!-- ========== 4 桁の 1〜100 ========== -->
     <section class="screen board" id="s-board" hidden>
       <header class="topbar">
-        <button class="icon-btn" id="board-back" aria-label="戻る">
+        <button class="icon-btn" id="board-back" data-i18n-aria="back" aria-label="戻る">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
         </button>
         <div class="topbar__title topbar__title--digits" id="board-digits"></div>
@@ -250,16 +251,16 @@
     <!-- ========== 図鑑 ========== -->
     <section class="screen zukan" id="s-zukan" hidden>
       <header class="topbar">
-        <button class="icon-btn" id="zukan-back" aria-label="戻る">
+        <button class="icon-btn" id="zukan-back" data-i18n-aria="back" aria-label="戻る">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
         </button>
-        <div class="topbar__title">図鑑</div>
+        <div class="topbar__title" data-i18n="zukan">図鑑</div>
         <span class="icon-btn icon-btn--ghost"></span>
       </header>
       <div class="stats" id="z-stats"></div>
       <div class="tabs" id="tabs" role="tablist">
-        <button class="tab on" data-tab="digits" role="tab">4 桁</button>
-        <button class="tab" data-tab="numbers" role="tab">数</button>
+        <button class="tab on" data-tab="digits" role="tab" data-i18n="tabDigits">4 桁</button>
+        <button class="tab" data-tab="numbers" role="tab" data-i18n="tabNumbers">数</button>
       </div>
       <div class="zbody" id="z-body"></div>
     </section>
@@ -268,27 +269,27 @@
     <div class="sheet" id="help" hidden role="dialog" aria-modal="true" aria-labelledby="help-title">
       <div class="sheet__panel">
         <div class="sheet__grip" data-close></div>
-        <h2 id="help-title">遊び方</h2>
+        <h2 id="help-title" data-i18n="howTitle">遊び方</h2>
         <ol class="steps">
           <li><span class="eg"><span class="eg__d">2027</span> → <span class="eg__t">47</span>　<code>20+27</code></span></li>
-          <li>記号を差し込む。入れなければ数字はつながる</li>
-          <li>記号が少ないほど ★</li>
+          <li data-i18n="howStep2">記号を差し込む。入れなければ数字はつながる</li>
+          <li data-i18n="howStep3">記号が少ないほど ★</li>
         </ol>
         <dl class="symtab">
           <dt>+ −<br>× ÷</dt><dd><code>2+2</code></dd>
-          <dt>( )</dt><dd><code>(2+2)×2</code>　1 組で 1 個</dd>
+          <dt>( )</dt><dd data-i18n="howParen"><code>(2+2)×2</code>　1 組で 1 個</dd>
           <dt>x<sup>y</sup></dt><dd><code>2^3</code> = 2×2×2 = 8</dd>
           <dt>√</dt><dd><code>√9</code> = 3</dd>
           <dt>.</dt><dd><code>0.5</code></dd>
-          <dt>!</dt><dd><code>4!</code> = 4×3×2×1 = 24<br><code>7!!</code> = 7×5×3×1 = 105<br><small>! が 2 つで 1 つおき、3 つで 2 つおき</small></dd>
-          <dt>!<sup>N</sup></dt><dd><code>9!⁽³⁾</code> = 9×6×3 = 162<br><small>N ずつ減らして掛ける（N 重階乗）。N がいくつでも 1 個</small></dd>
-          <dt>!n</dt><dd><code>!0</code> = 1　<code>!3</code> = 2　<code>!4</code> = 9　<code>!5</code> = 44<br><small>n 人でプレゼントを交換して、だれも自分のを受け取らない分け方の数（部分階乗）</small></dd>
+          <dt>!</dt><dd data-i18n="howFact"><code>4!</code> = 4×3×2×1 = 24<br><code>7!!</code> = 7×5×3×1 = 105<br><small>! が 2 つで 1 つおき、3 つで 2 つおき</small></dd>
+          <dt>!<sup>N</sup></dt><dd data-i18n="howFactN"><code>9!⁽³⁾</code> = 9×6×3 = 162<br><small>N ずつ減らして掛ける（N 重階乗）。N がいくつでも 1 個</small></dd>
+          <dt>!n</dt><dd data-i18n="howSub"><code>!0</code> = 1　<code>!3</code> = 2　<code>!4</code> = 9　<code>!5</code> = 44<br><small>n 人でプレゼントを交換して、だれも自分のを受け取らない分け方の数（部分階乗）</small></dd>
         </dl>
       </div>
     </div>
 
     <!-- ========== シート（ショップ） ========== -->
-    <div class="sheet" id="shop" hidden role="dialog" aria-modal="true" aria-label="ショップ">
+    <div class="sheet" id="shop" hidden role="dialog" aria-modal="true" data-i18n-aria="shop" aria-label="ショップ">
       <div class="sheet__panel">
         <div class="sheet__grip" data-close></div>
         <div class="shop__bal"><svg class="coin" viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="10.5" rx="8.5" ry="5.5"/><path d="M3.5 10.5v3c0 3 3.8 5.5 8.5 5.5s8.5-2.5 8.5-5.5v-3"/></svg><span id="shop-n">0</span></div>
@@ -300,6 +301,7 @@
     <div class="toast" id="toast" hidden></div>
   </main>
 
+  <script src="./i18n.js"></script>
   <script src="./webapp-kit/webapp-kit.js"></script>
   <script type="module" src="./main.js"></script>
 </body>
