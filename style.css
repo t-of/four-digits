@@ -347,6 +347,7 @@ code {
 }
 .coin-band.show { opacity: 1; transform: none; }
 .coin-band b { color: var(--tx); font-weight: 600; }
+#coin-dots i { font-style: normal; color: var(--gold-tx); }
 
 .brand { text-align: left; margin: 0 0 40px; }
 .logo {

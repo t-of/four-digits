@@ -254,7 +254,7 @@ $('shop').addEventListener('click', (e) => {
 });
 applyFont();
 
-// ログインボーナス: 1 日目 5 → 毎日 +1 → 6 日目以降 10。1 日あけたら 1 日目。日付を戻したときは渡さない
+// ログインボーナス: 1 日目 5 → 毎日 +1 → 6 日目以降 10、7 日目（14・21…日目も）だけ 20。1 日あけたら 1 日目。日付を戻したときは渡さない
 const prevDay = (key) => { const [y, m, d] = key.split('-').map(Number); return dateKey(new Date(y, m - 1, d - 1)); };
 let bandTimer = 0;
 function claimLogin() {
@@ -262,15 +262,17 @@ function claimLogin() {
   if (coins.last && today <= coins.last) return;
   coins.run = coins.last && prevDay(today) === coins.last ? coins.run + 1 : 1;
   coins.last = today;
-  const gain = Math.min(4 + coins.run, 10);
+  const gain = coins.run % 7 === 0 ? 20 : Math.min(4 + coins.run, 10);
   const from = coins.n;
   coins.n += gain; saveCoins();
-  showBand(from, gain, Math.min(coins.run, 7));
+  showBand(from, gain, (coins.run - 1) % 7 + 1);
 }
 function showBand(from, gain, day) {
   const band = $('coin-band');
   $('coin-plus').textContent = `+${gain}`;
-  $('coin-dots').textContent = '●'.repeat(day) + '○'.repeat(7 - day);
+  // 7 つ目の ● は金（＋20 の日）
+  $('coin-dots').innerHTML = '●'.repeat(Math.min(day, 6)) + '○'.repeat(6 - Math.min(day, 6))
+    + `<i class="${day === 7 ? 'on' : ''}">${day === 7 ? '●' : '○'}</i>`;
   $('coin-n').textContent = from;
   band.classList.add('show');
   sfx.coin();
