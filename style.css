@@ -1,5 +1,5 @@
 /* =====================================================================
-   OCCAM — 見た目
+   SHORT MATH（旧 OCCAM）— 見た目
    方針: 「剃刀」。暗い紙に、白い数字と細い金の線。飾りは削り、数字と式を主役にする。
    金（--gold）は「星・目標・成功」だけに使う。操作できるもの（カーソル・記号）は青（--ink）。
    ===================================================================== */
@@ -356,8 +356,8 @@ code {
   font-size: var(--fs-4);
   font-weight: 800;
   letter-spacing: 0.06em;
-  margin-left: -0.04em;   /* O の丸みの分、カードの左端に optical に合わせる */
-  line-height: 1;
+  margin-left: -0.04em;   /* S の丸みの分、カードの左端に optical に合わせる */
+  line-height: 1.22;
 }
 .logo span {
   background: linear-gradient(180deg, var(--logo-top) 30%, var(--logo-bot));
@@ -370,14 +370,14 @@ code {
   content: "";
   position: absolute;
   left: 0; right: -4%;
-  top: 52%;
+  top: calc(50% - 1px);
   height: 2px;
   background: linear-gradient(90deg, transparent, var(--gold) 18%, var(--gold2) 50%, var(--gold) 82%, transparent);
-  transform: rotate(-9deg);
   box-shadow: 0 0 12px rgba(var(--gold-rgb), 0.55);
-  animation: slash 0.9s 0.15s var(--ease) both;
+  animation: rule 0.9s 0.15s var(--ease) both;
   transform-origin: left center;
 }
+@keyframes rule { from { transform: scaleX(0); opacity: 0; } }
 @keyframes slash { from { transform: rotate(-9deg) scaleX(0); opacity: 0; } }
 
 .home__cards { display: flex; flex-direction: column; gap: 16px; }

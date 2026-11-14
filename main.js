@@ -15,7 +15,7 @@ function save(key, value) {
   try { localStorage.setItem(STORE + key, JSON.stringify(value)); } catch { /* 保存できなくても遊べる */ }
 }
 
-WebAppKit.init({ title: 'OCCAM', text: '4つの数字を、いちばん短い式で。1〜100を作るテンパズル。' });
+WebAppKit.init({ title: 'SHORT MATH', text: '4つの数字を、いちばん短い式で。1〜100を作るテンパズル。' });
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');
 
 const $ = (id) => document.getElementById(id);
@@ -712,7 +712,7 @@ function finish(k) {
     const streak = dailyStreak();
     $('r-daily').textContent = `${streak} 日連続 ・ 次の問題まで ${untilTomorrow()}`;
     const [, mo, da] = dailyDate.split('-');
-    lastShare = `OCCAM 今日の1問 ${Number(mo)}/${Number(da)}\n${starStr(bestStars)} 記号 ${k} 個${streak > 1 ? `（${streak} 日連続）` : ''}`;
+    lastShare = `SHORT MATH 今日の1問 ${Number(mo)}/${Number(da)}\n${starStr(bestStars)} 記号 ${k} 個${streak > 1 ? `（${streak} 日連続）` : ''}`;
     next.textContent = 'おまかせで続ける';
   } else {
     const nt = nextOpen();
