@@ -1,5 +1,6 @@
 import { analyze, isTarget, starsFor, formatValue, display } from './src/expr.js';
 import { sfx, setSound, unlockOnFirstTouch } from './src/sfx.js';
+import * as Rewards from './src/rewards.js';
 
 // =====================================================================
 // 保存（localStorage はほかのアプリと共有。キーは必ず 'four-digits.' で始める）
@@ -457,7 +458,9 @@ function renderDailyCard() {
   if (s) parts.push(`次の問題まで ${untilTomorrow()}`);
   $('daily-meta').textContent = parts.join(' ・ ');
   $('daily-meta').classList.toggle('broken', !!gn);
-  $('guard-btn').hidden = !(gn && coins.n >= GUARD_COST);
+  const gPay = coins.n >= GUARD_COST;
+  $('guard-btn').hidden = !(gn && (gPay || Rewards.available()));
+  $('guard-btn').innerHTML = gPay ? `${COIN_SVG}${GUARD_COST} で守る` : '▶ で守る';
   $('daily-btn').classList.toggle('is-done', s > 0);
 }
 
@@ -492,8 +495,10 @@ $('daily-btn').addEventListener('click', async () => {
   digits = pad4(n);
   openPuzzle(t, 'daily');
 });
-$('guard-btn').addEventListener('click', () => {
-  if (!guardable() || !coinSpend(GUARD_COST)) return;
+$('guard-btn').addEventListener('click', async () => {
+  if (!guardable()) return;
+  if (coins.n >= GUARD_COST) { if (!coinSpend(GUARD_COST)) return; }
+  else if (await Rewards.watch() !== 'earned') return;
   const d = new Date(); d.setDate(d.getDate() - 1);
   guard.push(dateKey(d)); save('guard', guard);
   sfx.pay();
@@ -671,9 +676,16 @@ function nextOpen() {
 }
 
 let lastShare = '';
+let adDue = false;   // この結果を離れるときに全画面広告を出す回か（rewards.js が数える）
+function leaveResult() {
+  if (!adDue) return;
+  adDue = false;
+  Rewards.requestInterstitial();
+}
 // 解けたら: 式を残して値を光らせ、間を置いてから星を 1 つずつ押す
 function finish(k) {
   solved = true;
+  if (locked === null) adDue = Rewards.recordSolve().due;   // 「もっと短く」の解き直しは数えない
   if (tut) { tut = false; save('tut', true); $('key-plus').classList.remove('hint'); }
   const m = minOf(digits, target);
   const got = starsFor(k, m);
@@ -828,6 +840,7 @@ $('n-ok').addEventListener('click', () => { const n = getN(); closeN(); press(n 
 
 // ---- 結果パネルのボタン ----
 function leavePuzzle() {
+  if (solved) leaveResult();
   resetPad();
   if (mode === 'free') openBoard(digits, boardFrom); else showHome();
 }
@@ -850,16 +863,21 @@ function passDone(keep) {
   openAuto();
 }
 $('giveup').addEventListener('click', () => {
-  if (!$('giveup-keep').hidden || auto.L < 2 || coins.n < KEEP_COST) { passDone(false); return; }
+  if (!$('giveup-keep').hidden || auto.L < 2 || (coins.n < KEEP_COST && !Rewards.available())) { passDone(false); return; }
   sfx.tap();
   $('giveup').textContent = `Lv ${auto.L} → ${auto.L - 1}`;
-  $('giveup-keep').textContent = `◎${KEEP_COST} Lv ${auto.L}`;
+  $('giveup-keep').textContent = `${coins.n >= KEEP_COST ? `◎${KEEP_COST}` : '▶'} Lv ${auto.L}`;
   $('giveup-keep').hidden = false;
   splitTimer = setTimeout(passReset, 3000);
 });
-$('giveup-keep').addEventListener('click', () => { if (coinSpend(KEEP_COST)) passDone(true); else passReset(); });
+$('giveup-keep').addEventListener('click', async () => {
+  if (coins.n >= KEEP_COST) { if (coinSpend(KEEP_COST)) passDone(true); else passReset(); return; }
+  clearTimeout(splitTimer);
+  if (await Rewards.watch() === 'earned') passDone(true); else passReset();
+});
 $('r-next').addEventListener('click', () => {
   sfx.tap();
+  leaveResult();
   if (mode === 'auto' || mode === 'daily') return openAuto();
   const nt = Number($('r-next').dataset.t);
   resetPad();

@@ -9,7 +9,7 @@
 // ブラウザの HTTP キャッシュを通さない（install は reload、fetch は no-cache）。古い main.js と新しい index.html が混ざって動かなくなるのを防ぐ。
 
 const PREFIX = 'four-digits-';
-const VERSION = 'v40';
+const VERSION = 'v41';
 const CACHE = `${PREFIX}${VERSION}`;
 const FONT_CACHE = `${PREFIX}fonts`;
 
@@ -20,6 +20,7 @@ const SHELL = [
   './main.js',
   './src/expr.js',
   './src/sfx.js',
+  './src/rewards.js',
   './data/puzzle.bin',
   './fonts/jost.woff2',
   './fonts/seg.woff2',
