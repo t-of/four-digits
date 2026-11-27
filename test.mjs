@@ -201,3 +201,24 @@ test('starsFor', () => {
   assert.equal(starsFor(99, 255), 3);
   assert.equal(starsFor(99, undefined), 3);
 });
+
+// ---- 問題の表（puzzle.bin と puzzle2.bin） ----
+import { lvFrom, mOf, lvOfByte, isTodayFit, SIZE } from './src/puzzle.js';
+const old = readFileSync(new URL('./data/puzzle.bin', import.meta.url));
+const tbl = readFileSync(new URL('./data/puzzle2.bin', import.meta.url));
+
+test('puzzle2.bin: 全 100 万問で Lv が puzzle.bin と一致する', () => {
+  assert.equal(old.length, SIZE); assert.equal(tbl.length, SIZE);
+  for (let i = 0; i < SIZE; i++) assert.equal(lvOfByte(tbl[i]), old[i] >> 5, `添え字 ${i}`);
+});
+test('puzzle2.bin: 全 100 万問で m が puzzle.bin と一致する', () => {
+  for (let i = 0; i < SIZE; i++) assert.equal(mOf(tbl[i]), old[i] & 31, `添え字 ${i}`);
+});
+test('puzzle2.bin: 今日向きの印は 33,269 問', () => {
+  let n = 0;
+  for (let i = 0; i < SIZE; i++) if (isTodayFit(tbl[i])) n++;
+  assert.equal(n, 33269);
+});
+test('lvFrom: 段と m の表', () => {
+  assert.deepEqual([lvFrom(0, 2), lvFrom(0, 3), lvFrom(1, 2), lvFrom(1, 4), lvFrom(2, 2), lvFrom(2, 3), lvFrom(2, 4), lvFrom(0, 5)], [1, 2, 2, 3, 3, 4, 5, 5]);
+});

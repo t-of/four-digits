@@ -3,6 +3,7 @@ import { sfx, setSound, unlockOnFirstTouch } from './src/sfx.js';
 import * as Rewards from './src/rewards.js';
 import * as G from './src/glyphs.js';
 import * as M from './src/milestones.js';
+import { SIZE as TABLE_SIZE, mOf, lvOfByte } from './src/puzzle.js';
 
 // 画面の言葉。L('日本語', 'English') で、起動時に決めた言語のほうを使う（i18n.js）
 const L = I18n.L;
@@ -45,20 +46,20 @@ setSound(settings.sound);
 unlockOnFirstTouch();
 
 // =====================================================================
-// 問題の表（data/puzzle.bin。1 問 1 バイト、添え字 = 4 桁×100 + 目標−1）
-// 下 5 ビット = 最小記号数（31 は未計算）、上 3 ビット = 難しさ 1〜5
+// 問題の表（data/puzzle2.bin。1 問 1 バイト、添え字 = 4 桁×100 + 目標−1。読み方は src/puzzle.js）
+// 下 5 ビット = 最小記号数（31 は未計算）、次の 2 ビット = 段、上 1 ビット = 今日向き
 // 1MB あるので、画面を先に出してから読む
 // =====================================================================
 let minTable = null;
 const tableReady = (async () => {
   try {
-    const r = await fetch('./data/puzzle.bin');
+    const r = await fetch('./data/puzzle2.bin');
     const b = await r.arrayBuffer();
-    if (b.byteLength === 1000000) minTable = new Uint8Array(b);
+    if (b.byteLength === TABLE_SIZE) minTable = new Uint8Array(b);
   } catch { /* 読めなければ未計算として遊べる */ }
 })();
-const minOf = (digits, t) => (minTable ? minTable[Number(digits) * 100 + t - 1] & 31 : 255);
-const lvOf = (n, t) => (minTable ? minTable[n * 100 + t - 1] >> 5 : 0);
+const minOf = (digits, t) => (minTable ? mOf(minTable[Number(digits) * 100 + t - 1]) : 255);
+const lvOf = (n, t) => (minTable ? lvOfByte(minTable[n * 100 + t - 1]) : 0);
 
 // =====================================================================
 // 記録: four-digits.best = { v: 2, s: { "0123": { "45": [k, "式"] } } }
@@ -198,7 +199,7 @@ function coinSpend(n) {
 const ms = M.parseMilestones(load('milestones', null), coins);
 const saveMs = () => save('milestones', ms);
 if (load('milestones', null) === null) saveMs();
-// Lv ごとの ★3 の数 [0, Lv1, …, Lv5]。puzzle.bin が読めていなければ null（渡さない。あとでホームが拾う）
+// Lv ごとの ★3 の数 [0, Lv1, …, Lv5]。問題の表が読めていなければ null（渡さない。あとでホームが拾う）
 function lvThreeCounts() {
   if (!minTable) return null;
   const c = [0, 0, 0, 0, 0, 0];
@@ -335,7 +336,7 @@ function showBand(from, gain, day, tag) {
   clearTimeout(bandTimer);
   bandTimer = setTimeout(() => { band.classList.remove('show'); renderCoins(); }, 2000);
 }
-// ★3 のごほうび: 初めての ★3 だけ puzzle.bin の Lv 別（1〜2 → 1、3〜4 → 2、5 → 3）で 1 日 30 まで。
+// ★3 のごほうび: 初めての ★3 だけ 問題の表の Lv 別（1〜2 → 1、3〜4 → 2、5 → 3）で 1 日 30 まで。
 // 今日の 1 問の ★3 は ＋5（上限の外）。渡した数を返す
 const REWARD_CAP = 30;
 function star3Reward(isFirst, isDaily) {
