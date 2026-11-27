@@ -414,7 +414,7 @@ code {
   border-color: rgba(var(--gold-rgb), 0.35);
 }
 .lvmeter { display: flex; align-items: baseline; gap: 4px; }
-.lvmeter i { width: 14px; height: 6px; border-radius: 2px; background: var(--s3); }
+.lvmeter i { width: 8px; height: 6px; border-radius: 2px; background: var(--s3); }
 .lvmeter i.on { background: var(--gold); }
 .lvmeter em { font-style: normal; margin-left: 8px; font-size: var(--fs-1); color: var(--tx2); font-feature-settings: "tnum"; letter-spacing: var(--track-label); text-transform: none; }
 
@@ -706,6 +706,8 @@ code {
 
 /* はじめての 1 問: 押すキーを青い輪で示す（動きを減らす設定でも輪は残る） */
 .key.hint { border-color: var(--ink); box-shadow: 0 0 0 2px var(--ink); animation: hint 1.4s ease-in-out infinite; }
+.key.appear { animation: key-in 0.3s ease-out, hint 1.4s 0.3s ease-in-out infinite; }
+@keyframes key-in { from { opacity: 0; transform: scale(0.85); } }
 @keyframes hint { 50% { box-shadow: 0 0 0 6px var(--ink-dim), 0 0 0 2px var(--ink); } }
 
 /* =====================================================================

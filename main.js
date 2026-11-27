@@ -9,8 +9,8 @@ import { dailyPuzzle } from './src/daily.js';
 import { createAuto } from './src/auto.js';
 import * as E from './src/edit.js';
 import { TUTS, tutStep, tutOf } from './src/tut.js';
-import { SIZE as TABLE_SIZE, mOf, lvOfByte } from './src/puzzle.js';
-import { NEED_SIZE } from './src/levels.js';
+import { SIZE as TABLE_SIZE, mOf, tierOf, lvOfByte } from './src/puzzle.js';
+import { NEED_SIZE, needOf, visibleKeys } from './src/levels.js';
 
 // 画面の言葉。L('日本語', 'English') で、起動時に決めた言語のほうを使う（i18n.js）
 const L = I18n.L;
@@ -73,6 +73,13 @@ const tableReady = (async () => {
 })();
 const minOf = (digits, t) => (minTable ? mOf(minTable[Number(digits) * 100 + t - 1]) : 255);
 const lvOf = (n, t) => (minTable ? lvOfByte(minTable[n * 100 + t - 1]) : 0);
+// おまかせの 10 段で使う問題の印。need.bin が読めなければ段から近い値（段 0 → 1、1 → 4、2 → 9）
+function infoOf(n, t) {
+  if (!minTable) return null;
+  const i = n * 100 + t - 1, b = minTable[i], m = mOf(b);
+  if (m >= 31) return null;
+  return { m, need: needTable ? needOf(needTable, i) : [1, 4, 9][tierOf(b)] };
+}
 
 // =====================================================================
 // 記録: four-digits.best = { v: 2, s: { "0123": { "45": [k, "式"] } } }
@@ -135,7 +142,7 @@ function totals() {
 // =====================================================================
 // おまかせ（中身は src/auto.js）
 // =====================================================================
-const A = createAuto({ load, save, lvOf, starsOf, hasTable: () => !!minTable });
+const A = createAuto({ load, save, starsOf, hasTable: () => !!minTable, infoOf });
 const auto = A.state;
 // はじめの 2 問（src/tut.js）。遊び方を読ませずに触って覚える
 const tutNow = () => tutStep(load('tut', false), totals().played);
@@ -464,7 +471,7 @@ function renderDailyCard() {
 }
 
 function renderHome() {
-  $('auto-lv').innerHTML = [1, 2, 3, 4, 5].map((i) => `<i class="${i <= auto.L ? 'on' : ''}"></i>`).join('') + `<em>Lv ${auto.L}</em>`;
+  $('auto-lv').innerHTML = Array.from({ length: 10 }, (_, k) => `<i class="${k < auto.S ? 'on' : ''}"></i>`).join('') + `<em>Lv ${auto.S}</em>`;
   if (minTable || tableTried) {
     const [n, t] = ensureAuto();
     $('auto-digits').textContent = pad4(n);
@@ -655,6 +662,7 @@ let digits = '0000';
 let mode = 'free';   // 'free' | 'auto' | 'daily'
 let target = 1, toks = [], cur = 0, solved = false, popAt = -1;
 let tut = 0;         // はじめの何問目の最中か（1 は + キーを光らせる。カーソルは 20|27 / 14|46 に置く。0 は通常）
+let intro = null;       // 紹介の 1 問の最中なら INTRO の 1 件（最初の式を入れて新しいキーを光らせる）
 let locked = null;   // 「もっと短く」で戻ったときの式。同じ式のままでは解けた扱いにしない
 let timers = [];
 const later = (fn, ms) => timers.push(setTimeout(fn, ms));
@@ -669,18 +677,21 @@ function openPuzzle(t, md = 'free') {
   target = t;
   const st = tutNow();
   tut = md === 'auto' && tutOf(st, Number(digits), t) ? st : 0;
-  toks = [...digits]; cur = tut ? 2 : 1; popAt = -1;
+  intro = md === 'auto' && !tut ? A.introOf() : null;
+  if (intro && !(Number(intro.digits) === Number(digits) && intro.target === t)) intro = null;
+  toks = [...(intro ? intro.start : digits)]; cur = intro ? intro.cursor : tut ? 2 : 1; popAt = -1;
   solved = false; locked = null;
   $('p-coin-plus').classList.remove('show');
   $('key-plus').classList.toggle('hint', tut === 1);
   $('r-retry').classList.remove('hint');
   resetPad();
+  setKeys();
   show('puzzle');
   $('puzzle-target').textContent = t;
   $('puzzle-tag').innerHTML = md === 'daily' ? L('今日の 1 問', 'Daily puzzle')
-    : md === 'auto' ? `${L('おまかせ', 'Auto')} <em>Lv ${auto.L}</em>` : `${L('フリー', 'Free')} <em>${digits}</em>`;
+    : md === 'auto' ? `${L('おまかせ', 'Auto')} <em>Lv ${auto.S}</em>` : `${L('フリー', 'Free')} <em>${digits}</em>`;
   passReset();
-  $('giveup').hidden = md !== 'auto' || !!tut;
+  $('giveup').hidden = md !== 'auto' || !!tut || !!intro;
   $('expr').classList.remove('won');
   showMine();
   update(true);
@@ -787,6 +798,7 @@ function finish(k) {
   if (locked === null) adDue = Rewards.recordSolve().due;   // 「もっと短く」の解き直しは数えない
   const tutDone = tut;
   if (tut) { save('tut', tut); tut = 0; $('key-plus').classList.remove('hint'); }
+  clearKeyHints();
   const m = minOf(digits, target);
   const got = starsFor(k, m);
   const before = starsOf(digits, target);   // saveBest で上書きされる前の星（初めての ★3 の判定）
@@ -827,7 +839,7 @@ function finish(k) {
   if (mode === 'auto') {
     const dl = A.solved(got);
     next.textContent = L('次の 1 問', 'Next puzzle');
-    if (dl) sub = [sub, `Lv ${auto.L} ${dl > 0 ? '↑' : '↓'}`].filter(Boolean).join(' ・ ');
+    if (dl) sub = [sub, `Lv ${auto.S} ${dl > 0 ? '↑' : '↓'}`].filter(Boolean).join(' ・ ');
     rs.textContent = sub;
   } else if (mode === 'daily') {
     if (bestStars > (daily[dailyDate] || 0)) { daily[dailyDate] = bestStars; save('daily', daily); }
@@ -862,6 +874,35 @@ function finish(k) {
   }, wait);
 }
 
+// キーの出し方（2-5）。おまかせは seen のキーだけ、場所は空けておく。紹介の 1 問は新しいキーが 0.3 秒でふっと現れて光る
+const keyName = (b) => b.dataset.ch || b.dataset.key;
+function clearKeyHints() {
+  for (const b of $('keys').children) b.classList.remove('hint');
+  $('n-ok').classList.remove('hint');
+}
+function setKeys() {
+  const vis = new Set(visibleKeys(mode, auto.seen, auto.all));
+  const fresh = intro ? new Set(visibleKeys('auto', [...auto.seen, intro.key], 0).filter((k) => !vis.has(k))) : new Set();
+  for (const b of $('keys').children) {
+    const k = keyName(b);
+    b.style.visibility = vis.has(k) || fresh.has(k) ? '' : 'hidden';
+    b.classList.remove('hint', 'appear');
+    if (fresh.has(k)) b.style.visibility = 'hidden';
+  }
+  $('n-ok').classList.remove('hint');
+  if (!intro) return;
+  const glow = { par: '(', pow: '^', sqrt: '√', dot: '.', fact: '!', neg: '−', factn: 'factn', subf: '!' }[intro.key];
+  const go = () => {
+    for (const b of $('keys').children) {
+      const k = keyName(b);
+      if (fresh.has(k)) { b.style.visibility = ''; if (!reduceMotion) b.classList.add('appear'); }
+      if (k === glow) b.classList.add('hint');
+    }
+    if (fresh.size) sfx.milestone();
+  };
+  if (fresh.size) later(go, 300); else go();
+}
+
 function resetPad() {
   clearTimers();
   $('keys').hidden = false;
@@ -873,6 +914,11 @@ function press(tok) {
   if (solved) return;
   if (cur === 0 && '×÷^).'.includes(tok)) { sfx.nope(); return; }
   if (text().length + tok.length > MAXLEN) { sfx.nope(); return; }
+  if (intro) {   // 光っているキーを押したら光を消す。括弧は ( のあと ) へ移る
+    for (const b of $('keys').children) if (b.classList.contains('hint')) b.classList.remove('hint');
+    $('n-ok').classList.remove('hint');
+    if (intro.key === 'par' && tok === '(') for (const b of $('keys').children) if (keyName(b) === ')') b.classList.add('hint');
+  }
   popAt = cur;
   ({ toks, cur } = E.insertTok(toks, cur, tok));
   sfx.key(); buzz();
@@ -978,7 +1024,11 @@ $('n-chips').addEventListener('click', (e) => {
   const c = e.target.closest('[data-n]');
   if (c) { nInput.value = c.dataset.n; sfx.move(); renderN(); }
 });
-function openN() { $('keys').hidden = true; $('nsel').hidden = false; renderN(); sfx.tap(); }
+function openN() {
+  $('keys').hidden = true; $('nsel').hidden = false;
+  if (intro && intro.key === 'factn') { nInput.value = '2'; $('n-ok').classList.add('hint'); }   // 紹介: N は 2 で開き「入れる」が光る
+  renderN(); sfx.tap();
+}
 function closeN() { $('nsel').hidden = true; $('keys').hidden = false; }
 nInput.addEventListener('input', () => { nInput.value = nInput.value.replace(/\D/g, '').slice(0, 2); renderN(); });
 $('n-minus').addEventListener('click', () => { nInput.value = Math.max(1, getN() - 1); sfx.move(); renderN(); });
@@ -1003,18 +1053,18 @@ function passReset() {
   $('giveup-keep').hidden = true;
 }
 function passDone(keep) {
-  const was = auto.L;
+  const was = auto.S;
   passReset();
   if (keep) { auto.streak = 0; A.push(); A.save(); sfx.pay(); }
   else { sfx.del(); A.giveUp(); }
-  toast(keep ? L(`Lv ${was} のまま`, `Staying at Lv ${was}`) : auto.L === was ? L('パス', 'Pass') : `${L('パス', 'Pass')} ・ Lv ${was} → ${auto.L}`, 2400);
+  toast(keep ? L(`Lv ${was} のまま`, `Staying at Lv ${was}`) : auto.S === was ? L('パス', 'Pass') : `${L('パス', 'Pass')} ・ Lv ${was} → ${auto.S}`, 2400);
   openAuto();
 }
 $('giveup').addEventListener('click', () => {
-  if (!$('giveup-keep').hidden || auto.L < 2 || (coins.n < KEEP_COST && !Rewards.available())) { passDone(false); return; }
+  if (!$('giveup-keep').hidden || auto.S < 2 || (coins.n < KEEP_COST && !Rewards.available())) { passDone(false); return; }
   sfx.tap();
-  $('giveup').textContent = `Lv ${auto.L} → ${auto.L - 1}`;
-  $('giveup-keep').innerHTML = `${coins.n >= KEEP_COST ? `${COIN_SVG}${KEEP_COST}` : '▶'} Lv ${auto.L}`;
+  $('giveup').textContent = `Lv ${auto.S} → ${auto.S - 1}`;
+  $('giveup-keep').innerHTML = `${coins.n >= KEEP_COST ? `${COIN_SVG}${KEEP_COST}` : '▶'} Lv ${auto.S}`;
   $('giveup-keep').hidden = false;
   splitTimer = setTimeout(passReset, 3000);
 });
