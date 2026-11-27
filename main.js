@@ -301,6 +301,7 @@ applyFont();
 // ログインボーナス: 1 日目 5 → 毎日 +1 → 6 日目以降 10、7 日目（14・21…日目も）だけ 20。1 日あけたら 1 日目。日付を戻したときは渡さない
 const prevDay = (key) => { const [y, m, d] = key.split('-').map(Number); return dateKey(new Date(y, m - 1, d - 1)); };
 let bandTimer = 0;
+let bumpTimer = 0;
 function claimLogin() {
   const today = dateKey(new Date());
   if (coins.last && today <= coins.last) return false;
@@ -364,11 +365,13 @@ function showReward(gain, from = coins.n - gain, rc = $('r-coin')) {
       const v = from + Math.round((gain * (i + 1)) / n);
       $('p-coin-n').textContent = v;
       pc.classList.remove('bump'); void pc.offsetWidth; pc.classList.add('bump');
+      clearTimeout(bumpTimer); bumpTimer = setTimeout(() => pc.classList.remove('bump'), reduceMotion ? 600 : 300);
       sfx.coinTick(i);
       if (i === n - 1) {
         const pl = $('p-coin-plus');
         pl.textContent = `+${gain}`;
         pl.classList.remove('show'); void pl.offsetWidth; pl.classList.add('show');
+        pl.addEventListener('animationend', () => pl.classList.remove('show'), { once: true });
       }
     }, reduceMotion ? 0 : 460);
   }, i * 80);
@@ -490,6 +493,7 @@ let clock = 0;
 function startClock() { stopClock(); clock = setInterval(renderDailyCard, 1000); }
 function stopClock() { clearInterval(clock); clock = 0; }
 
+let guardHtml = '';
 function renderDailyCard() {
   dailyDate = dateKey(new Date());
   const [, mo, da] = dailyDate.split('-');
@@ -507,7 +511,8 @@ function renderDailyCard() {
   $('daily-meta').classList.toggle('broken', !!gn);
   const gPay = coins.n >= GUARD_COST;
   $('guard-btn').hidden = !(gn && (gPay || Rewards.available()));
-  $('guard-btn').innerHTML = gPay ? `${COIN_SVG}${GUARD_COST} ${L('で守る', 'Keep streak')}` : `▶ ${L('で守る', 'Keep streak')}`;
+  const gHtml = gPay ? L(`${COIN_SVG}${GUARD_COST} で守る`, `Keep streak ${COIN_SVG}${GUARD_COST}`) : `▶ ${L('で守る', 'Keep streak')}`;
+  if (gHtml !== guardHtml) { guardHtml = gHtml; $('guard-btn').innerHTML = gHtml; }
   $('daily-btn').classList.toggle('is-done', s > 0);
 }
 
@@ -638,6 +643,7 @@ function openPuzzle(t, md = 'free') {
   tut = md === 'auto' && digits === pad4(TUT[0]) && t === TUT[1] && needTut();
   toks = [...digits]; cur = tut ? 2 : 1; popAt = -1;
   solved = false; locked = null;
+  $('p-coin-plus').classList.remove('show');
   $('key-plus').classList.toggle('hint', tut);
   resetPad();
   show('puzzle');
@@ -645,7 +651,7 @@ function openPuzzle(t, md = 'free') {
   $('puzzle-tag').innerHTML = md === 'daily' ? L('今日の 1 問', 'Daily puzzle')
     : md === 'auto' ? `${L('おまかせ', 'Auto')} <em>Lv ${auto.L}</em>` : `${L('フリー', 'Free')} <em>${digits}</em>`;
   passReset();
-  $('giveup').hidden = md !== 'auto';
+  $('giveup').hidden = md !== 'auto' || tut;
   $('expr').classList.remove('won');
   showMine();
   update(true);
@@ -1417,6 +1423,7 @@ $('zukan-back').addEventListener('click', () => { sfx.tap(); showHome(); });
 let openSheetId = null;
 function openSheet(id) {
   closeSheet();
+  clearTimeout(toastTimer); $('toast').hidden = true;
   const s = $(id);
   s.hidden = false;
   openSheetId = id;
