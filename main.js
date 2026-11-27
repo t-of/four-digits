@@ -1,6 +1,7 @@
 import { analyze, isTarget, starsFor, formatValue, display } from './src/expr.js';
 import { sfx, setSound, unlockOnFirstTouch } from './src/sfx.js';
 import * as Rewards from './src/rewards.js';
+import * as Remind from './src/remind.js';
 import * as G from './src/glyphs.js';
 import * as M from './src/milestones.js';
 import { dailyPuzzle } from './src/daily.js';
@@ -487,14 +488,14 @@ function showHome() {
 }
 
 $('auto-btn').addEventListener('click', async () => { sfx.tap(); await tableReady; openAuto(); });
-$('daily-btn').addEventListener('click', async () => {
-  sfx.tap();
+async function openDaily() {
   await tableReady;
   dailyDate = dateKey(new Date());
   const [n, t] = dailyPuzzle(dailyDate, minTable);
   digits = pad4(n);
   openPuzzle(t, 'daily');
-});
+}
+$('daily-btn').addEventListener('click', () => { sfx.tap(); openDaily(); });
 $('guard-btn').addEventListener('click', async () => {
   if (!guardable()) return;
   if (coins.n >= GUARD_COST) { if (!coinSpend(GUARD_COST)) return; }
@@ -504,6 +505,75 @@ $('guard-btn').addEventListener('click', async () => {
   sfx.pay();
   renderDailyCard();
 });
+// =====================================================================
+// 毎日の通知（src/remind.js）。iOS 版が提供元をつなぐまで、ボタンもベルも出ない
+// =====================================================================
+let remind = Remind.readState();
+const BELL = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 16.5V11a6 6 0 0112 0v5.5l1.5 1.5h-15zM10 20.5h4"/></svg>';
+const BELL_OK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+function renderRemind() {
+  const st = Remind.bellState({ available: Remind.available(), asked: remind.asked, on: remind.on, permission: Remind.permission() });
+  const b = $('remind-btn');
+  b.hidden = st.hidden;
+  b.setAttribute('aria-pressed', String(st.pressed));
+  b.classList.toggle('muted', !st.pressed);
+}
+// 予約を全部入れ直す。起動して表を読み終えたとき・戻ったとき・解いたとき・ベルを押したとき
+async function replanRemind() {
+  if (!Remind.available()) return;
+  await tableReady;
+  await Remind.replan(new Date(), daily, minTable, remind.on);
+  renderRemind();
+}
+Remind.onAttach(() => { renderRemind(); replanRemind(); });
+document.addEventListener('visibilitychange', () => { if (!document.hidden) { renderRemind(); replanRemind(); } });
+// 通知を押したとき。遊んでいる最中は邪魔しない。解いていれば今日の 1 問、解いていなければホーム
+Remind.onOpen(async () => {
+  await tableReady;
+  if (current === 'puzzle') return;
+  closeSheet();
+  if (daily[dateKey(new Date())] > 0) { if (current !== 'home') showHome(); return; }
+  openDaily();
+});
+$('remind-btn').addEventListener('click', async () => {
+  sfx.tap();
+  if ($('remind-btn').getAttribute('aria-pressed') === 'true') remind = Remind.writeState({ on: false });
+  else {
+    const p = Remind.permission();
+    if (p === 'denied') { toast(L('設定 → 通知 → SHORT MATH', 'Settings → Notifications → SHORT MATH'), 3000); return; }
+    if (p === 'prompt' && !(await Remind.request())) { renderRemind(); return; }
+    remind = Remind.writeState({ on: true });
+  }
+  renderRemind();
+  replanRemind();
+});
+// 結果パネルのボタン（聞くのはここで 1 回だけ。離れたら聞いたことにする）
+let askTimer = 0;
+function showRemindAsk() {
+  clearTimeout(askTimer);
+  const b = $('r-remind');
+  b.hidden = true;
+  if (mode === 'daily') {
+    Remind.clearToday(new Date());
+    replanRemind();
+  }
+  if (!Remind.askVisible({ available: Remind.available(), asked: remind.asked, mode })) return;
+  remind = Remind.writeState({ asked: true });
+  b.innerHTML = `${BELL}<span>${L('毎日 20:00', 'Daily 8:00 PM')}</span>`;
+  b.setAttribute('aria-label', L('毎日 20 時に今日の 1 問を知らせる', 'Remind me of the daily puzzle at 8 PM'));
+  b.hidden = false;
+}
+$('r-remind').addEventListener('click', async () => {
+  sfx.tap();
+  const b = $('r-remind');
+  const ok = await Remind.request();
+  remind = Remind.writeState({ asked: true, on: ok });
+  if (ok) { b.innerHTML = BELL_OK; askTimer = setTimeout(() => { b.hidden = true; }, 800); } else b.hidden = true;
+  renderRemind();
+  replanRemind();
+});
+tableReady.then(replanRemind);
+
 $('free-btn').addEventListener('click', () => { sfx.tap(); openFree(); });
 $('zukan-btn').addEventListener('click', () => { sfx.tap(); openZukan(); });
 $('glyph-btn').addEventListener('click', () => { sfx.tap(); openGlyphs(); });
@@ -749,6 +819,7 @@ function finish(k) {
     next.textContent = nt ? L('次へ', 'Next') : L('制覇！', 'Complete!');
     next.dataset.t = nt;
   }
+  showRemindAsk();
 
   const wait = reduceMotion ? 300 : 750;
   later(() => {

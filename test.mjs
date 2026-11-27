@@ -340,3 +340,58 @@ test('おまかせ: 「もっと短く」の 2 回目（cur なし）は数え�
   const { A } = mkAuto(2);
   assert.equal(A.solved(1), 0); assert.equal(A.state.L, 2);
 });
+
+// ---- 毎日の通知（src/remind.js）----
+import { planReminders, parseState, askVisible, bellState } from './src/remind.js';
+const rem = (now, daily = {}) => planReminders(now, daily, tbl);
+const p4 = (n) => String(n).padStart(4, '0');
+const textOf = (y, m, d) => { const k = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`; const [n, t] = dailyPuzzle(k, tbl); return `${m}/${d} ${p4(n)} → ${t}`; };
+
+test('通知: 今日 10:00・未解決 → 7 件、最初が今日の 20:00、id は YYYYMMDD、文面は今日の 1 問', () => {
+  const l = rem(new Date(2026, 11, 3, 10, 0));
+  assert.equal(l.length, 7);
+  assert.equal(l[0].at.getTime(), new Date(2026, 11, 3, 20, 0).getTime());
+  assert.equal(l[0].id, 20261203);
+  assert.equal(l[0].text, textOf(2026, 12, 3));
+  assert.match(l[0].text, /^12\/3 \d{4} → \d+$/);
+  assert.equal(l[6].id, 20261209);
+});
+test('通知: 今日解決済み（★1）→ 6 件、明日から', () => {
+  const l = rem(new Date(2026, 11, 3, 10, 0), { '2026-12-03': 1 });
+  assert.equal(l.length, 6); assert.equal(l[0].id, 20261204);
+});
+test('通知: 今日 20:30 → 今日の分なし、明日から 6 件', () => {
+  const l = rem(new Date(2026, 11, 3, 20, 30));
+  assert.equal(l.length, 6); assert.equal(l[0].id, 20261204);
+});
+test('通知: 月末・年末をまたぐ', () => {
+  const l = rem(new Date(2026, 11, 30, 10, 0));
+  assert.deepEqual(l.map((x) => x.id), [20261230, 20261231, 20270101, 20270102, 20270103, 20270104, 20270105]);
+  assert.equal(l[2].at.getTime(), new Date(2027, 0, 1, 20, 0).getTime());
+  assert.equal(l[2].text, textOf(2027, 1, 1));
+});
+test('通知: 切り替えの日の前日までは前の選び方、当日から今日向き', () => {
+  const l = rem(new Date(2026, 10, 28, 10, 0));
+  assert.deepEqual(l.map((x) => x.id)[0], 20261128);
+  assert.equal(l[0].text, `11/28 ${p4(oldDaily('2026-11-28')[0])} → ${oldDaily('2026-11-28')[1]}`);
+  const [n, t] = dailyPuzzle(SWITCH_DATE, tbl);
+  assert.equal(l[1].text, `11/29 ${p4(n)} → ${t}`);
+  assert.ok(isTodayFit(tbl[n * 100 + t - 1]));
+});
+test('通知: 問題の表がなければ作らない', () => assert.deepEqual(planReminders(new Date(2026, 11, 3, 10), {}, null), []));
+test('通知: remind が壊れていても初期値で読め、知らない項目は残す', () => {
+  const init = { v: 1, asked: false, on: false };
+  for (const bad of [null, 'x{', '[]', '123', '"a"', undefined]) assert.deepEqual(parseState(bad), init);
+  assert.deepEqual(parseState('{"v":1,"asked":true,"on":true,"x":5}'), { v: 1, asked: true, on: true, x: 5 });
+  assert.deepEqual({ ...parseState('{"asked":true,"x":5}'), on: true }, { v: 1, asked: true, on: true, x: 5 });
+});
+test('通知: 提供元がなければボタンもベルも出ない', () => {
+  assert.equal(askVisible({ available: false, asked: false, mode: 'daily' }), false);
+  assert.equal(bellState({ available: false, asked: true, on: true, permission: 'granted' }).hidden, true);
+  assert.equal(askVisible({ available: true, asked: false, mode: 'daily' }), true);
+  assert.equal(askVisible({ available: true, asked: true, mode: 'daily' }), false);
+  assert.equal(askVisible({ available: true, asked: false, mode: 'auto' }), false);
+  assert.equal(bellState({ available: true, asked: false, on: false, permission: 'prompt' }).hidden, true);
+  assert.deepEqual(bellState({ available: true, asked: true, on: true, permission: 'denied' }), { hidden: false, pressed: false });
+  assert.deepEqual(bellState({ available: true, asked: true, on: true, permission: 'granted' }), { hidden: false, pressed: true });
+});

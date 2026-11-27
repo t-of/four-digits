@@ -58,6 +58,9 @@
         <button class="icon-btn" id="theme-btn" aria-label="明るい配色にする">
           <svg viewBox="0 0 24 24" aria-hidden="true"><g class="sun"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/></g><path class="moon" d="M19 14.5A7.5 7.5 0 019.5 5a7.5 7.5 0 109.5 9.5z"/></svg>
         </button>
+        <button class="icon-btn" id="remind-btn" aria-label="毎日 20 時に今日の 1 問を知らせる" aria-pressed="false" hidden>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 16.5V11a6 6 0 0112 0v5.5l1.5 1.5h-15zM10 20.5h4"/><path class="off" d="M4 4l16 16"/></svg>
+        </button>
         <button class="icon-btn" id="sound-btn" data-i18n-aria="sound" aria-label="効果音" aria-pressed="true">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h3.5L12 6v12l-4.5-3.5H4z"/><path class="on" d="M15.5 9a4 4 0 010 6M18 6.5a7.5 7.5 0 010 11"/><path class="off" d="M16 9.5l5 5M21 9.5l-5 5"/></svg>
         </button>
@@ -117,7 +120,7 @@
           <button class="pill" data-wak="share" data-i18n="share">共有</button>
           <span class="pill lang" id="lang-seg" role="group" aria-label="言語 / Language"><button type="button" data-v="ja" lang="ja">日本語</button><span aria-hidden="true">/</span><button type="button" data-v="en" lang="en">English</button></span>
         </div>
-        <div><a href="/">T.OF...</a> ・ <a href="https://t-of.github.io/contact/"><span data-i18n="contact">問い合わせ</span></a> ・ <span class="ver">v55</span></div>
+        <div><a href="/">T.OF...</a> ・ <a href="https://t-of.github.io/contact/"><span data-i18n="contact">問い合わせ</span></a> ・ <span class="ver">v56</span></div>
       </footer>
     </section>
 
@@ -194,6 +197,7 @@
           <div class="result__text" id="r-text"></div>
           <div class="result__sub" id="r-sub"></div>
           <div class="result__daily" id="r-daily" hidden></div>
+          <button class="btn" id="r-remind" aria-label="毎日 20 時に今日の 1 問を知らせる" hidden></button>
           <div class="result__coin" id="r-coin" hidden><svg class="coin" viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="10.5" rx="8.5" ry="5.5"/><path d="M3.5 10.5v3c0 3 3.8 5.5 8.5 5.5s8.5-2.5 8.5-5.5v-3"/></svg><span id="r-coin-n">+0</span><span class="result__msw" id="r-ms"></span></div>
           <button class="btn btn--primary" id="r-next" data-i18n="next">次へ</button>
           <div class="result__row">

@@ -956,9 +956,12 @@ code {
 #theme-btn .sun { display: none; }
 #theme-btn.is-dark .moon { display: none; }
 #theme-btn.is-dark .sun { display: inline; }
-#sound-btn .off { display: none; }
+#sound-btn .off, #remind-btn .off { display: none; }
 #sound-btn.muted .on { display: none; }
-#sound-btn.muted .off { display: inline; }
+#sound-btn.muted .off, #remind-btn.muted .off { display: inline; }
+#r-remind { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+#r-remind[hidden] { display: none; }
+#r-remind svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .symtab small { font-size: var(--fs-1); color: var(--tx3); }
 
 /* 明るい版: 大きな金の数字は上が明るく下が濃いグラデーションにして、白地でも金に見せる */
