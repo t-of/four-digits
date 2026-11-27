@@ -483,3 +483,55 @@ test('2 問目 1446 → 24: 段 0・m = 1、素直な式は 2 つ、最短は 1 
   const a = an2('14+4+6', '1446'); assert.equal(a.status, 'ok'); assert.equal(Number(a.value.n / a.value.d), 24); assert.equal(a.symbols, 2);
   const c = an2('144÷6', '1446'); assert.equal(c.status, 'ok'); assert.equal(Number(c.value.n / c.value.d), 24); assert.equal(c.symbols, 1);
 });
+
+// ---- need.bin とステージ（src/levels.js。数は solver/src/make_levels.py が出したもの） ----
+import { needOf, stageHas, newNeed, INTRO, NEED_SIZE, NEED_ID, SEEN_IDS } from './src/levels.js';
+const needTbl = readFileSync(new URL('./data/need.bin', import.meta.url));
+const NEEDS = [1, 3, 4, 5, 6, 7, 8, 9, 10];
+// S1〜10 の [問題の数, 新しい記号の need の数]（S1・S2 は新しい記号なし）
+const STAGE_COUNTS = [[8200, 0], [102127, 0], [117096, 9360], [37280, 37280], [75728, 38448], [85950, 10222], [128340, 42390], [244418, 43941], [303695, 303695], [224464, 87525]];
+const NEED_COUNTS = { 1: 218063, 3: 29166, 4: 40859, 5: 54936, 6: 12240, 7: 78643, 8: 45570, 9: 432998, 10: 87525 };
+
+test('need.bin: 500,000 バイト、値は {1,3,4,5,6,7,8,9,10} だけ、need ごとの数', () => {
+  assert.equal(needTbl.length, NEED_SIZE);
+  const c = {};
+  for (let i = 0; i < SIZE; i++) { const v = needOf(needTbl, i); assert.ok(NEEDS.includes(v), `添え字 ${i}: ${v}`); c[v] = (c[v] || 0) + 1; }
+  assert.deepEqual(c, NEED_COUNTS);
+});
+test('need.bin: need ≤ 3 ⇔ 段 0、4〜8 ⇔ 段 1、9〜10 ⇔ 段 2', () => {
+  for (let i = 0; i < SIZE; i++) {
+    const v = needOf(needTbl, i), t = (tbl[i] >> 5) & 3;
+    assert.equal(v <= 3 ? 0 : v <= 8 ? 1 : 2, t, `添え字 ${i}`);
+  }
+});
+test('ステージ: S ごとの問題の数・新しい記号の need の数（どの S も 1,000 問以上、新しい記号は 200 問以上）、S10 は残り全部', () => {
+  const cnt = Array(10).fill(0), cn = Array(10).fill(0);
+  for (let i = 0; i < SIZE; i++) {
+    const nd = needOf(needTbl, i), m = mOf(tbl[i]);
+    let any = 0;
+    for (let S = 1; S <= 10; S++) if (stageHas(S, nd, m)) { cnt[S - 1]++; any++; if (newNeed(S) === nd) cn[S - 1]++; }
+    assert.ok(any >= 1, `どの S にも入らない ${i}`);
+  }
+  assert.deepEqual(cnt.map((n, k) => [n, newNeed(k + 1) ? cn[k] : 0]), STAGE_COUNTS);
+  STAGE_COUNTS.forEach(([n, nn], k) => { assert.ok(n >= 1000, `S${k + 1}`); if (k >= 2) assert.ok(nn >= 200, `S${k + 1} 新しい記号`); });
+});
+test('紹介の 8 問: 解けた式が目標・m どおり、記号が S までの seen、最初の式は目標と違う、段', () => {
+  assert.deepEqual(INTRO.map((x) => x.S), [3, 4, 5, 6, 7, 8, 9, 10]);
+  const val = (r) => Number(r.value.n) / Number(r.value.d);
+  for (const x of INTRO) {
+    const i = Number(x.digits) * 100 + x.target - 1, m = mOf(tbl[i]), nd = needOf(needTbl, i);
+    const at = `S${x.S} ${x.digits}→${x.target}`;
+    const r = an2(x.solved, x.digits);
+    assert.equal(r.status, 'ok', at); assert.ok(r.complete, at);
+    assert.equal(val(r), x.target, `${at} 値`);
+    assert.equal(r.symbols, m, `${at} 記号数 ${r.symbols} と m ${m}`);
+    const s = an2(x.start, x.digits);
+    assert.equal(s.status, 'ok', `${at} 最初の式`); assert.notEqual(val(s), x.target, `${at} 最初の式の値`);
+    assert.ok(x.cursor >= 0 && x.cursor <= x.start.length, `${at} カーソル`);
+    assert.equal((tbl[i] >> 5) & 3, x.S === 3 ? 0 : x.S <= 8 ? 1 : 2, `${at} 段`);
+    assert.equal(nd, x.S, `${at} need`);
+    assert.equal(NEED_ID[nd], x.key, `${at} 光るキー`);
+    assert.ok(SEEN_IDS.indexOf(x.key) >= 0);
+    assert.ok(stageHas(x.S, nd, m), `${at} その S に入る`);
+  }
+});

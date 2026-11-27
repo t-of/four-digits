@@ -9,7 +9,7 @@
 // ブラウザの HTTP キャッシュを通さない（install は reload、fetch は no-cache）。古い main.js と新しい index.html が混ざって動かなくなるのを防ぐ。
 
 const PREFIX = 'four-digits-';
-const VERSION = 'v58';
+const VERSION = 'v59';
 const CACHE = `${PREFIX}${VERSION}`;
 const FONT_CACHE = `${PREFIX}fonts`;
 
@@ -28,6 +28,7 @@ const SHELL = [
   './src/daily.js',
   './src/edit.js',
   './src/tut.js',
+  './src/levels.js',
   './src/auto.js',
   './src/remind.js',
   './src/entitlement.js',
@@ -36,6 +37,7 @@ const SHELL = [
   './glyphs/pixel.svg',
   './glyphs/back.svg',
   './data/puzzle2.bin',
+  './data/need.bin',
   './fonts/jost.woff2',
   './fonts/seg.woff2',
   './fonts/mono.woff2',

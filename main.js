@@ -10,6 +10,7 @@ import { createAuto } from './src/auto.js';
 import * as E from './src/edit.js';
 import { TUTS, tutStep, tutOf } from './src/tut.js';
 import { SIZE as TABLE_SIZE, mOf, lvOfByte } from './src/puzzle.js';
+import { NEED_SIZE } from './src/levels.js';
 
 // 画面の言葉。L('日本語', 'English') で、起動時に決めた言語のほうを使う（i18n.js）
 const L = I18n.L;
@@ -57,12 +58,18 @@ unlockOnFirstTouch();
 // 1MB あるので、画面を先に出してから読む
 // =====================================================================
 let minTable = null;
+let needTable = null;
 const tableReady = (async () => {
   try {
     const r = await fetch('./data/puzzle2.bin');
     const b = await r.arrayBuffer();
     if (b.byteLength === TABLE_SIZE) minTable = new Uint8Array(b);
   } catch { /* 読めなければ未計算として遊べる */ }
+  try {   // 問題の印 need（data/need.bin。読み方は src/levels.js）。おまかせの 10 段で使う
+    const r = await fetch('./data/need.bin');
+    const b = await r.arrayBuffer();
+    if (b.byteLength === NEED_SIZE) needTable = new Uint8Array(b);
+  } catch { /* 読めなければ puzzle2.bin の段と m だけで選ぶ */ }
 })();
 const minOf = (digits, t) => (minTable ? mOf(minTable[Number(digits) * 100 + t - 1]) : 255);
 const lvOf = (n, t) => (minTable ? lvOfByte(minTable[n * 100 + t - 1]) : 0);
