@@ -10,6 +10,7 @@ import { createAuto } from './src/auto.js';
 import * as E from './src/edit.js';
 import { TUTS, tutStep, tutOf } from './src/tut.js';
 import { SIZE as TABLE_SIZE, mOf, tierOf, lvOfByte, parDots } from './src/puzzle.js';
+import { fetchAnswer, parseShown, shownAdd, star3Pays, toksOf } from './src/answers.js';
 import { NEED_SIZE, needOf, visibleKeys, learnedRow } from './src/levels.js';
 
 // 画面の言葉。L('日本語', 'English') で、起動時に決めた言語のほうを使う（i18n.js）
@@ -142,7 +143,10 @@ function totals() {
 // =====================================================================
 // おまかせ（中身は src/auto.js）
 // =====================================================================
-const A = createAuto({ load, save, starsOf, hasTable: () => !!minTable, infoOf });
+// 答えを見た問題: four-digits.shown = { v: 1, list: ["1446:24", …] }（500 件まで）。おまかせは二度と出さない
+let shown = parseShown(load('shown', null));
+const isShown = (digits, t) => shown.includes(`${digits}:${t}`);
+const A = createAuto({ load, save, starsOf, hasTable: () => !!minTable, infoOf, isShown });
 const auto = A.state;
 // はじめの 2 問（src/tut.js）。遊び方を読ませずに触って覚える
 const tutNow = () => tutStep(load('tut', false), totals().played);
@@ -312,7 +316,7 @@ function showBand(from, gain, day, tag) {
   clearTimeout(bandTimer);
   bandTimer = setTimeout(() => { band.classList.remove('show'); renderCoins(); }, 2000);
 }
-// ★3 のごほうび: 初めての ★3 だけ 問題の表の Lv 別（1〜2 → 1、3〜4 → 2、5 → 3）で 1 日 30 まで。
+// ★3 のごほうび: 初めての ★3 だけ（答えを見た問題は出さない。呼ぶ側が star3Pays で決める） 問題の表の Lv 別（1〜2 → 1、3〜4 → 2、5 → 3）で 1 日 30 まで。
 // 今日の 1 問の ★3 は ＋5（上限の外）。渡した数を返す
 const REWARD_CAP = 30;
 function star3Reward(isFirst, isDaily) {
@@ -713,7 +717,8 @@ function openPuzzle(t, md = 'free') {
     : md === 'auto' ? `${L('おまかせ', 'Auto')} <em>Lv ${auto.S}</em>` : `${L('フリー', 'Free')} <em>${digits}</em>`;
   passReset();
   $('giveup').hidden = md !== 'auto' || !!tut || !!intro;
-  $('expr').classList.remove('won');
+  $('expr').classList.remove('won', 'reveal');
+  $('expr').setAttribute('aria-label', L('式', 'Expression'));
   showMine();
   update(true);
 }
@@ -836,7 +841,7 @@ function finish(k) {
   const before = starsOf(digits, target);   // saveBest で上書きされる前の星（初めての ★3 の判定）
   const dailyBefore = daily[dailyDate] || 0;
   const bestStars = saveBest(digits, target, k, text());
-  const reward = got >= 3 ? star3Reward(before < 3, mode === 'daily' && dailyBefore < 3) : 0;
+  const reward = got >= 3 ? star3Reward(star3Pays(before < 3, isShown(digits, target)), mode === 'daily' && dailyBefore < 3) : 0;
   const mdue = got >= 3 ? msDue() : [];
   const mgain = mdue.length ? msPay(mdue) : 0;
   const record = m < 255 && k < m;
@@ -941,6 +946,8 @@ function resetPad() {
   clearTimers();
   $('keys').hidden = false;
   $('result').hidden = true;
+  $('r-stars').hidden = false;
+  $('r-retry').parentElement.hidden = false;
   $('nsel').hidden = true;
 }
 
@@ -1086,13 +1093,49 @@ function passReset() {
   $('giveup').textContent = L('パス', 'Pass');
   $('giveup-keep').hidden = true;
 }
-function passDone(keep) {
-  const was = auto.S;
+async function passDone(keep) {
+  const was = auto.S, n = digits, t = target;
   passReset();
+  $('giveup').hidden = true;
+  const ans = fetchAnswer(Number(n), t);   // 圏外で読めなければ null（3 秒で打ち切り）
   if (keep) { auto.streak = 0; A.push(); A.save(); sfx.pay(); }
   else { sfx.del(); A.giveUp(); }
-  toast(keep ? L(`Lv ${was} のまま`, `Staying at Lv ${was}`) : auto.S === was ? L('パス', 'Pass') : `${L('パス', 'Pass')} ・ Lv ${was} → ${auto.S}`, 2400);
-  openAuto();
+  const e = await ans;
+  if (mode !== 'auto' || solved || digits !== n || target !== t) return;   // 待つあいだに離れた
+  if (!e) {
+    toast(keep ? L(`Lv ${was} のまま`, `Staying at Lv ${was}`) : auto.S === was ? L('パス', 'Pass') : `${L('パス', 'Pass')} ・ Lv ${was} → ${auto.S}`, 2400);
+    openAuto();
+    return;
+  }
+  shown = shownAdd(shown, `${n}:${t}`);
+  save('shown', { v: 1, list: shown });
+  showAnswer(e, was !== auto.S ? `Lv ${was} → ${auto.S}` : '');
+}
+// パスのあと: 同じ画面で最短の式が左から現れる。星なしの結果パネルに「次の 1 問」だけ
+function showAnswer(e, sub) {
+  solved = true;
+  toks = toksOf(e); cur = toks.length; popAt = -1;
+  clearKeyHints();
+  const a = analyze(e, digits);
+  const val = $('value');
+  val.className = 'value';
+  val.innerHTML = `<span class="value__eq">=</span>${formatValue(a.value)}`;
+  $('expr').classList.toggle('reveal', !reduceMotion);
+  $('expr').setAttribute('aria-label', L(`最短の式 ${display(e)}`, `Shortest: ${display(e)}`));
+  renderExpr();
+  renderPar(a.symbols);
+  $('key-back').disabled = $('key-left').disabled = $('key-right').disabled = true;
+  $('mine').textContent = '';
+  $('nsel').hidden = true;
+  $('r-stars').hidden = true;
+  $('r-text').hidden = true;
+  $('r-sub').textContent = sub; $('r-sub').classList.remove('record');
+  for (const id of ['r-daily', 'r-remind', 'r-coin', 'r-share', 'r-retry']) $(id).hidden = true;
+  $('r-retry').parentElement.hidden = true;
+  $('r-ms').innerHTML = '';
+  $('r-next').textContent = L('次の 1 問', 'Next puzzle');
+  const wait = reduceMotion ? 0 : 120 * Math.max(0, toks.filter((_, i) => !numeric(i)).length) + 250;
+  later(() => { $('keys').hidden = true; $('result').hidden = false; }, wait);
 }
 $('giveup').addEventListener('click', () => {
   if (!$('giveup-keep').hidden || auto.S < 2 || (coins.n < KEEP_COST && !Rewards.available())) { passDone(false); return; }

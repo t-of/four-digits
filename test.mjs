@@ -661,3 +661,42 @@ else {
     }
   });
 }
+
+// ---- パスのあとの答え（T8） ----
+import { ansLine, ansFile, parseShown, shownAdd, SHOWN_MAX, star3Pays, toksOf } from './src/answers.js';
+test('ansLine: (n % 100) × 100 + t − 1、ファイルは上 2 桁', () => {
+  assert.equal(ansLine('1446', 24), 46 * 100 + 23);
+  assert.equal(ansLine(7, 1), 700);
+  assert.equal(ansLine(9999, 100), 99 * 100 + 99);
+  assert.equal(ansFile('1446'), './data/ans/14.txt.gz');
+  assert.equal(ansFile('0007'), './data/ans/00.txt.gz');
+});
+test('parseShown: 知らない形は空、500 件で切る、変な行は捨てる', () => {
+  assert.deepEqual(parseShown(null), []);
+  assert.deepEqual(parseShown({ v: 2, list: ['1446:24'] }), []);
+  assert.deepEqual(parseShown({ v: 1, list: 'x' }), []);
+  assert.deepEqual(parseShown({ v: 1, list: ['1446:24', 5, 'abc', '123:4'] }), ['1446:24']);
+  const big = { v: 1, list: Array.from({ length: 700 }, (_, i) => `${String(i).padStart(4, '0')}:1`) };
+  assert.equal(parseShown(big).length, SHOWN_MAX);
+  assert.equal(parseShown(big)[0], '0000:1');
+});
+test('shownAdd: 先頭に足し、重複は前に寄せ、500 件で古いものから消える', () => {
+  assert.deepEqual(shownAdd(['a', 'b'], 'c'), ['c', 'a', 'b']);
+  assert.deepEqual(shownAdd(['a', 'b'], 'b'), ['b', 'a']);
+  const l = shownAdd(Array.from({ length: 500 }, (_, i) => `${i}`), 'new');
+  assert.equal(l.length, 500); assert.equal(l[0], 'new'); assert.equal(l[499], '498');
+});
+test('star3Pays: 初めてで答えを見ていないときだけ', () => {
+  assert.equal(star3Pays(true, false), true);
+  assert.equal(star3Pays(true, true), false);
+  assert.equal(star3Pays(false, false), false);
+});
+test('toksOf: 1 文字か !{N} に分ける', () => {
+  assert.deepEqual(toksOf('81−1+5!{3}'), ['8', '1', '−', '1', '+', '5', '!{3}']);
+  assert.deepEqual(toksOf('225÷!4'), ['2', '2', '5', '÷', '!', '4']);
+});
+test('pick: 答えを見た問題は返さない', () => {
+  const mem = {};
+  const A = createAuto({ load: (k, f) => mem[k] ?? f, save: (k, v) => { mem[k] = v; }, starsOf: () => 0, hasTable: () => false, isShown: (d, t) => t !== 7 });
+  for (let i = 0; i < 50; i++) assert.equal(A.pick()[1], 7);
+});

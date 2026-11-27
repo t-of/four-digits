@@ -529,6 +529,9 @@ code {
 .t-fn { color: var(--ink); padding: 0 0.03em; font-weight: 400; }
 .t.pop { animation: pop 0.22s var(--ease); }
 @keyframes pop { from { transform: scale(0.4) translateY(0.2em); opacity: 0; } }
+/* パスのあと: 数字の板はそのまま、記号が左から 0.12 秒ずつ現れる */
+.expr.reveal .t:not(.t-d) { animation: pop 0.22s var(--ease) both; animation-delay: calc(var(--k) * 120ms); }
+.expr.reveal .t-dot { animation: pop 0.22s var(--ease) both; animation-delay: calc(var(--k) * 120ms); }
 
 .caret { display: inline-block; position: relative; width: 0; height: 1em; vertical-align: -0.12em; }
 .caret::after {

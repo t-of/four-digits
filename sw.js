@@ -9,9 +9,12 @@
 // ブラウザの HTTP キャッシュを通さない（install は reload、fetch は no-cache）。古い main.js と新しい index.html が混ざって動かなくなるのを防ぐ。
 
 const PREFIX = 'four-digits-';
-const VERSION = 'v62';
+const VERSION = 'v63';
 const CACHE = `${PREFIX}${VERSION}`;
 const FONT_CACHE = `${PREFIX}fonts`;
+// 答えのデータ（data/ans/）は版で消えない別のキャッシュ（cache-first）。パスしたときだけ読む。SHELL には入れない。
+// 古い four-digits-expr-v1 などは下の activate で消える（PREFIX で始まり、CACHE・FONT_CACHE・ANS_CACHE でないもの）
+const ANS_CACHE = `${PREFIX}ans-v1`;
 
 const SHELL = [
   './',
@@ -30,6 +33,7 @@ const SHELL = [
   './src/tut.js',
   './src/levels.js',
   './src/auto.js',
+  './src/answers.js',
   './src/remind.js',
   './src/entitlement.js',
   './glyphs/neon.svg',
@@ -58,7 +62,7 @@ self.addEventListener('install', (e) => {
 self.addEventListener('activate', (e) => {
   e.waitUntil(caches.keys()
     .then((keys) => Promise.all(keys
-      .filter((k) => k.startsWith(PREFIX) && k !== CACHE && k !== FONT_CACHE)
+      .filter((k) => k.startsWith(PREFIX) && k !== CACHE && k !== FONT_CACHE && k !== ANS_CACHE)
       .map((k) => caches.delete(k))))
     .then(() => self.clients.claim()));
 });
@@ -67,7 +71,9 @@ self.addEventListener('fetch', (e) => {
   const req = e.request;
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
-  if (url.origin === location.origin) {
+  if (url.origin === location.origin && url.pathname.includes('/data/ans/')) {
+    e.respondWith(cacheFirst(req, ANS_CACHE));
+  } else if (url.origin === location.origin) {
     e.respondWith(networkFirst(req));
   } else if (url.hostname === 'fonts.googleapis.com' || url.hostname === 'fonts.gstatic.com') {
     e.respondWith(cacheFirst(req, FONT_CACHE));
