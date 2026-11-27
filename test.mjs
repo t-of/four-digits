@@ -299,46 +299,69 @@ test('数字はどの操作でも消えず、順番も変わらない（1,000 �
   }
 });
 
-// ---- おまかせ（src/auto.js） ----
-const mkAuto = (L = 1, saved = null) => {
+// ---- おまかせ（src/auto.js。10 段の S・seen・紹介は末尾の「おまかせの 10 段」） ----
+const mkAuto = (S = 1, saved = null, deps = {}) => {
   const store = {};
   if (saved) store.auto = saved;
-  const A = createAuto({ load: (k, f) => (k in store ? store[k] : f), save: (k, v) => { store[k] = JSON.parse(JSON.stringify(v)); }, lvOf: () => 0, starsOf: () => 0, hasTable: () => false });
-  if (!saved) A.state.L = L;
+  const A = createAuto({ load: (k, f) => (k in store ? store[k] : f), save: (k, v) => { store[k] = JSON.parse(JSON.stringify(v)); }, starsOf: () => 0, hasTable: () => false, ...deps });
+  if (!saved) A.state.S = S;
   return { A, store };
 };
 const play = (A, got) => { A.state.cur = [1234, 5]; return A.solved(got); };
 
-test('おまかせ: ★3 を 2 問続けると Lv+1', () => {
+test('おまかせ: ★3 を 2 問続けると S+1', () => {
   const { A } = mkAuto(2);
-  assert.equal(play(A, 3), 0); assert.equal(A.state.L, 2);
-  assert.equal(play(A, 3), 1); assert.equal(A.state.L, 3);
+  assert.equal(play(A, 3), 0); assert.equal(A.state.S, 2);
+  assert.equal(play(A, 3), 1); assert.equal(A.state.S, 3);
   assert.equal(A.state.streak, 0);
 });
-test('おまかせ: ★1 で −1、★2 は変わらず連続が切れる', () => {
-  const { A } = mkAuto(3);
-  assert.equal(play(A, 1), -1); assert.equal(A.state.L, 2);
+test('おまかせ: ★1 で −1、★2 は変わらず連続が切れる、パスで −1', () => {
+  const { A } = mkAuto(5);
+  assert.equal(play(A, 1), -1); assert.equal(A.state.S, 4);
   play(A, 3);
-  assert.equal(play(A, 2), 0); assert.equal(A.state.L, 2);
+  assert.equal(play(A, 2), 0); assert.equal(A.state.S, 4);
   assert.equal(A.state.streak, 0);
+  A.giveUp(); assert.equal(A.state.S, 3);
 });
-test('おまかせ: Lv1 で下がらず、Lv5 で上がらない', () => {
+test('おまかせ: S1 で下がらず、S10 で上がらない。seen に √ があっても S は 4 未満に下がれる', () => {
   const a = mkAuto(1).A;
-  assert.equal(play(a, 1), 0); assert.equal(a.state.L, 1);
-  const b = mkAuto(5).A;
-  play(b, 3); assert.equal(play(b, 3), 0); assert.equal(b.state.L, 5);
+  assert.equal(play(a, 1), 0); assert.equal(a.state.S, 1);
+  a.giveUp(); assert.equal(a.state.S, 1);
+  const b = mkAuto(10).A;
+  play(b, 3); assert.equal(play(b, 3), 0); assert.equal(b.state.S, 10);
+  const c = mkAuto(1, { v: 1, L: 3, S: 5, seen: ['ops', 'par', 'pow', 'sqrt'], streak: 0, recent: [], cur: null }).A;
+  for (let i = 0; i < 6; i++) c.giveUp();
+  assert.equal(c.state.S, 1); assert.ok(c.state.seen.includes('sqrt'));
 });
-test('おまかせ: 保存の形は { v: 1, L, streak, recent, cur }', () => {
+test('おまかせ: 保存の形は { v: 1, L, S, seen, streak, recent, cur }（all・intro があるときだけ足す）', () => {
   const { A, store } = mkAuto(2);
   play(A, 3);
-  assert.deepEqual(Object.keys(store.auto), ['v', 'L', 'streak', 'recent', 'cur']);
-  assert.deepEqual(store.auto, { v: 1, L: 2, streak: 1, recent: [[1234, 5]], cur: null });
+  assert.deepEqual(Object.keys(store.auto), ['v', 'L', 'S', 'seen', 'streak', 'recent', 'cur']);
+  assert.deepEqual(store.auto, { v: 1, L: 1, S: 2, seen: ['ops'], streak: 1, recent: [[1234, 5]], cur: null });
   const again = mkAuto(1, store.auto).A.state;
-  assert.deepEqual([again.L, again.streak, again.recent], [2, 1, [[1234, 5]]]);
+  assert.deepEqual([again.S, again.streak, again.recent], [2, 1, [[1234, 5]]]);
+  const b = mkAuto(1, { v: 1, L: 2, streak: 0, recent: [], cur: null });
+  b.A.save();
+  assert.deepEqual(Object.keys(b.store.auto), ['v', 'L', 'S', 'seen', 'all', 'streak', 'recent', 'cur']);
+});
+test('おまかせ: 書き戻す L は S1〜2 → 1、3〜4 → 2、5〜7 → 3、8〜9 → 4、10 → 5', () => {
+  const want = [1, 1, 1, 2, 2, 3, 3, 3, 4, 4, 5];
+  for (let S = 1; S <= 10; S++) { const { A, store } = mkAuto(S); A.save(); assert.equal(store.auto.L, want[S]); assert.equal(store.auto.S, S); }
+});
+test('おまかせ: 引き継ぎ L1〜5 → S2・4・6・8・10、seen はその S までの記号、all: 1。データなしは S1・["ops"]', () => {
+  const ids = ['ops', 'par', 'pow', 'sqrt', 'dot', 'fact', 'neg', 'factn', 'subf'];
+  const upTo = { 2: 1, 4: 3, 6: 5, 8: 7, 10: 9 };
+  [[1, 2], [2, 4], [3, 6], [4, 8], [5, 10]].forEach(([L, S]) => {
+    const { A, store } = mkAuto(1, { v: 1, L, streak: 1, recent: [], cur: null });
+    assert.equal(A.state.S, S); assert.deepEqual(A.state.seen, ids.slice(0, upTo[S])); assert.equal(A.state.all, 1);
+    A.save(); assert.equal(store.auto.S, S); assert.equal(store.auto.all, 1);
+  });
+  const n = mkAuto(1).A.state;
+  assert.deepEqual([n.S, n.seen, n.all, n.intro], [1, ['ops'], 0, 0]);
 });
 test('おまかせ: 「もっと短く」の 2 回目（cur なし）は数えない', () => {
   const { A } = mkAuto(2);
-  assert.equal(A.solved(1), 0); assert.equal(A.state.L, 2);
+  assert.equal(A.solved(1), 0); assert.equal(A.state.S, 2);
 });
 
 // ---- 毎日の通知（src/remind.js）----
@@ -534,4 +557,68 @@ test('紹介の 8 問: 解けた式が目標・m どおり、記号が S まで�
     assert.ok(SEEN_IDS.indexOf(x.key) >= 0);
     assert.ok(stageHas(x.S, nd, m), `${at} その S に入る`);
   }
+});
+
+// ---- おまかせの 10 段（pick・紹介・キーの見え方） ----
+import { visibleKeys } from './src/levels.js';
+const infoOfT = (n, t) => { const i = n * 100 + t - 1; return { m: mOf(tbl[i]), need: needOf(needTbl, i) }; };
+const realAuto = (S, extra = {}) => mkAuto(1, { v: 1, L: 1, S, seen: ['ops'], streak: 0, recent: [], cur: null, ...extra }, { hasTable: () => true, infoOf: infoOfT, ...extra.deps });
+
+test('おまかせ: 各 S で pick を 400 回引くと stageHas を満たし、新しい記号の need の割合が見込みどおり', () => {
+  for (let S = 1; S <= 10; S++) {
+    const { A } = realAuto(S);
+    let nn = 0;
+    for (let k = 0; k < 400; k++) {
+      const [n, t] = A.pick(); const f = infoOfT(n, t);
+      assert.ok(stageHas(S, f.need, f.m), `S${S} ${n}→${t}`);
+      if (newNeed(S) && f.need === newNeed(S)) nn++;
+    }
+    if (S >= 3) {
+      const [cnt, cn] = STAGE_COUNTS[S - 1];
+      const want = 0.5 + 0.5 * cn / cnt;
+      assert.ok(Math.abs(nn / 400 - want) < 0.1, `S${S} 新しい記号 ${nn}/400 見込み ${want.toFixed(2)}`);
+      assert.ok(nn / 400 >= 0.35, `S${S}`);
+    }
+  }
+});
+test('おまかせ: S3 に初めて上がると次は紹介の問題。解くと seen に par、S・連続は変わらない。下がって上がり直しても出ない', () => {
+  const { A, store } = realAuto(2);
+  play(A, 3); play(A, 3);
+  assert.equal(A.state.S, 3); assert.equal(A.state.intro, 3);
+  assert.deepEqual(A.pick(), [2314, 70]);
+  assert.equal(store.auto.intro, 3);
+  A.state.cur = [2314, 70];
+  assert.equal(A.solved(3), 0);
+  assert.equal(A.state.S, 3); assert.equal(A.state.streak, 0); assert.equal(A.state.intro, 0);
+  assert.ok(A.state.seen.includes('par'));
+  assert.equal(store.auto.intro, undefined);
+  A.giveUp(); assert.equal(A.state.S, 2);
+  play(A, 3); play(A, 3);
+  assert.equal(A.state.S, 3); assert.equal(A.state.intro, 0);
+});
+test('おまかせ: 引き継いだ人（seen 済み）が上がっても紹介は出ない。まだの記号なら出る', () => {
+  const a = mkAuto(1, { v: 1, L: 1, streak: 0, recent: [], cur: null }).A;   // S2、seen は ops だけ
+  a.state.S = 2; play(a, 3); play(a, 3);
+  assert.equal(a.state.intro, 3);
+  const b = mkAuto(1, { v: 1, L: 2, streak: 0, recent: [], cur: null }).A;   // S4、seen は S4 まで
+  play(b, 3); play(b, 3);
+  assert.equal(b.state.S, 5); assert.equal(b.state.intro, 5);
+  const c = mkAuto(1, { v: 1, L: 2, S: 4, seen: ['ops', 'par', 'pow', 'sqrt'], streak: 0, recent: [], cur: null }).A;
+  play(c, 3); play(c, 3);
+  assert.equal(c.state.intro, 0);
+});
+test('おまかせ: 答えを見た問題（isShown）は pick が返さない', () => {
+  const shown = new Set();
+  const { A } = realAuto(1, { deps: { isShown: (d, t) => shown.has(`${d}:${t}`) } });
+  for (let k = 0; k < 200; k++) { const [n, t] = A.pick(); assert.ok(!shown.has(`${String(n).padStart(4, '0')}:${t}`)); shown.add(`${String(n).padStart(4, '0')}:${t}`); }
+});
+test('キーの見え方: おまかせは seen だけ、今日の 1 問・フリー・all は全部', () => {
+  assert.deepEqual(visibleKeys('auto', ['ops']), ['+', '−', '×', '÷', 'back', 'left', 'right', 'clear']);
+  const k3 = visibleKeys('auto', ['ops', 'par', 'pow']);
+  for (const k of ['(', ')', '^']) assert.ok(k3.includes(k));
+  for (const k of ['√', '.', '!', 'factn']) assert.ok(!k3.includes(k));
+  const all = visibleKeys('daily', ['ops']);
+  assert.equal(all.length, 15);
+  assert.deepEqual(visibleKeys('auto', ['ops'], 1), all);
+  assert.deepEqual(visibleKeys('free', ['ops']), all);
 });

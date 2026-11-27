@@ -35,3 +35,18 @@ export const INTRO = [
   { S: 9, digits: '1005', target: 85, start: '100−5', cursor: 5, key: 'factn', solved: '100−5!!', spare: { digits: '1004', target: 92, start: '100−4', solved: '100−4!!' } },
   { S: 10, digits: '2254', target: 25, start: '225÷4', cursor: 4, key: 'subf', solved: '225÷!4' },
 ];
+
+// キーの見え方（2-5）。返すのはキーの名前（記号のキーは記号そのまま、ほかは back / left / right / clear / factn）。
+// おまかせは seen のキーだけ。今日の 1 問・フリー・all（引き継いだ人）は全部
+export const ALL_KEYS = ['+', '−', '×', '÷', '(', ')', '^', '√', '.', '!', 'factn', 'back', 'left', 'right', 'clear'];
+const SEEN_KEYS = { ops: ['+', '−', '×', '÷'], par: ['(', ')'], pow: ['^'], sqrt: ['√'], dot: ['.'], fact: ['!'], factn: ['factn'] };
+export function visibleKeys(mode, seen, all) {
+  if (mode !== 'auto' || all) return [...ALL_KEYS];
+  const s = new Set(['back', 'left', 'right', 'clear']);
+  for (const id of ['ops', ...(seen || [])]) for (const k of SEEN_KEYS[id] || []) s.add(k);
+  return ALL_KEYS.filter((k) => s.has(k));
+}
+// S に上がったとき紹介する記号の seen の id（S1・S2 は無し）
+export const introKeyOf = (S) => INTRO.find((x) => x.S === S)?.key || null;
+// その S までに紹介する記号の seen の id を全部（引き継ぎ用）
+export const seenUpTo = (S) => ['ops', ...INTRO.filter((x) => x.S <= S).map((x) => x.key)];
