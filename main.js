@@ -232,6 +232,12 @@ const SHOP_KINDS = {
 const PAL_EG = '<span class="shopcard__eg shopcard__eg--pal"><b>2</b><b>0</b><i>+</i><b>2</b><b>7</b></span>';
 function renderShop() {
   $('shop-n').textContent = coins.n;
+  // 文字の入口（一番下に 1 枚）。押すと図鑑の「文字」タブへ
+  const gAll = G.allDone(glyphs.got), gCost = G.drawCost(glyphs.got);
+  $('shop-glyph').innerHTML = `<button class="shopcard shopcard--glyph${glyphsNew() ? ' new' : ''}${!gAll && coins.n < gCost ? ' poor' : ''}" id="shop-glyph-go" aria-label="${L('文字', 'Glyphs')}">`
+    + `<span class="gdraw__tile" aria-hidden="true"><svg viewBox="0 0 100 100"><use href="#back"/></svg></span>`
+    + (gAll ? `<span class="gcount gold">${G.ownedCount(glyphs.got)}/${G.ALL_ITEMS.length}</span>` : `<span class="shopcard__price">${COIN_SVG}${gCost}</span>`)
+    + '</button>';
   for (const [kind, k] of Object.entries(SHOP_KINDS)) {
     $(k.el).innerHTML = ['', ...k.ids].map((id) => {
       const own = !id || shop.owned.includes(id);
@@ -261,6 +267,7 @@ for (const [kind, k] of Object.entries(SHOP_KINDS)) {
 }
 // ほかを押したら確認を戻す
 $('shop').addEventListener('click', (e) => {
+  if (e.target.closest('#shop-glyph-go')) { sfx.tap(); closeSheet(); tab = 'glyphs'; numPick = 0; return openZukan(); }
   if (shopAsk && !e.target.closest(`[data-id="${shopAsk}"]`)) { shopAsk = null; renderShop(); }
 });
 applyFont();
@@ -485,6 +492,7 @@ function renderHome() {
   renderDailyCard();
   const tt = totals();
   $('zukan-sub').textContent = tt.played ? `★ ${tt.stars}` : '';
+  $('zukan-btn').classList.toggle('new', glyphsNew());
 }
 let tableTried = false;
 tableReady.then(() => { tableTried = true; if (current === 'home') renderHome(); });
@@ -998,6 +1006,13 @@ const zbody = $('z-body');
 // 知らない id も消さずに残す（版を戻しても失わない）。seen は「新しい」の印用（まだ使わない）
 const glyphs = G.parseGlyphs(load('glyphs', null));
 const saveGlyphs = () => save('glyphs', glyphs);
+// 見たことのないデザインがあれば「新しい」の印（金の点）。「文字」タブを開いたら seen に足して消す
+const glyphsNew = () => G.GLYPH_DESIGNS.some((d) => !glyphs.seen.includes(d.id));
+function markGlyphsSeen() {
+  if (!glyphsNew()) return;
+  for (const d of G.GLYPH_DESIGNS) if (!glyphs.seen.includes(d.id)) glyphs.seen.push(d.id);
+  saveGlyphs();
+}
 const rnd01 = () => { try { return crypto.getRandomValues(new Uint32Array(1))[0] / 4294967296; } catch { return Math.random(); } };
 const DESIGN_NAME = { neon: L('ネオン', 'Neon'), ink: L('墨', 'Ink'), pixel: L('ドット', 'Pixel') };
 
@@ -1154,7 +1169,12 @@ function openZukan() {
   $('z-stats').innerHTML = [
     [L('解いた', 'Solved'), tt.solved], ['★3', tt.three], [L('4 桁', '4 digits'), tt.played], [L('制覇', 'Complete'), tt.full],
   ].map(([k, v]) => `<div class="stat"><b>${v}</b><small>${k}</small></div>`).join('');
-  for (const b of document.querySelectorAll('.tab')) b.classList.toggle('on', b.dataset.tab === tab);
+  const isNew = glyphsNew();
+  if (tab === 'glyphs') markGlyphsSeen();
+  for (const b of document.querySelectorAll('.tab')) {
+    b.classList.toggle('on', b.dataset.tab === tab);
+    b.classList.toggle('new', b.dataset.tab === 'glyphs' && isNew && tab !== 'glyphs');
+  }
   if (tab === 'digits') renderDigitsTab(); else if (tab === 'glyphs') renderGlyphsTab(); else if (numPick) renderNumberDetail(); else renderNumbersTab();
 }
 
