@@ -317,7 +317,7 @@ function showReward(gain, from = coins.n - gain, rc = $('r-coin')) {
   const pc = $('p-coin');
   rc.classList.add('in');
   sfx.coin();
-  const n = reduceMotion ? 1 : Math.min(gain, 10);
+  const n = reduceMotion ? 1 : Math.min(gain, 5);
   const a = rc.querySelector('.coin').getBoundingClientRect();
   const b = pc.querySelector('.coin').getBoundingClientRect();
   for (let i = 0; i < n; i++) later(() => {
@@ -327,7 +327,7 @@ function showReward(gain, from = coins.n - gain, rc = $('r-coin')) {
       $('p-coin-n').textContent = v;
       pc.classList.remove('bump'); void pc.offsetWidth; pc.classList.add('bump');
       clearTimeout(bumpTimer); bumpTimer = setTimeout(() => pc.classList.remove('bump'), reduceMotion ? 600 : 300);
-      sfx.coinTick(i);
+      if (i === 0 || i === n - 1) sfx.coinTick(i);
       if (i === n - 1) {
         const pl = $('p-coin-plus');
         pl.textContent = `+${gain}`;
@@ -708,7 +708,7 @@ function finish(k) {
   renderExpr();
   $('expr').classList.add('won');
   $('value').classList.add('hit');
-  showMine();
+  $('mine').textContent = '';   // 解いた直後は上の式と同じなので出さない
   $('nsel').hidden = true;
   $('giveup').hidden = true; passReset();
 
@@ -720,12 +720,14 @@ function finish(k) {
   rs.textContent = sub;
   rs.classList.toggle('record', record);
   $('r-retry').hidden = got >= 3;
+  // コインは 1 行の合計。節目に届いたときだけ、同じ行に金の札（小さな名前＋大きな数）を並べる
+  const total = reward + mgain;
   const rc = $('r-coin');
-  rc.hidden = !reward; rc.classList.remove('in');
-  if (reward) $('r-coin-n').textContent = `×${reward}`;
-  if (reward || mgain) $('p-coin-n').textContent = coins.n - reward - mgain;
+  rc.hidden = !total; rc.classList.remove('in');
+  if (total) $('r-coin-n').textContent = `+${total}`;
+  if (total) $('p-coin-n').textContent = coins.n - total;
   const rms = $('r-ms');
-  rms.innerHTML = mdue.map((x) => `<div class="result__ms" aria-label="${x.kind === 'l' ? `Lv ${x.n} ★3 ${M.LV_NEED}` : `★3 ${x.n}`} ×${x.gain}"><span>${x.kind === 'l' ? `Lv${x.n} ★3 ${M.LV_NEED}` : `★3 ${x.n}`}</span><b>${COIN_SVG}×${x.gain}</b></div>`).join('');
+  rms.innerHTML = mdue.map((x) => `<span class="result__ms" aria-label="${x.kind === 'l' ? `Lv ${x.n} ★3 ${M.LV_NEED}` : `★3 ${x.n}`}">${x.kind === 'l' ? `<i>Lv${x.n} ★3</i><b>${M.LV_NEED}</b>` : `<i>★3</i><b>${x.n}</b>`}</span>`).join('');
   $('r-share').hidden = mode !== 'daily';
   $('r-daily').hidden = mode !== 'daily';
   const next = $('r-next');
@@ -759,15 +761,10 @@ function finish(k) {
       if (i === 2 && record) later(() => sfx.record(), 180);
     }, 160 + i * 220));
     const t0 = 160 + 2 * 220 + 200 + (record ? 180 : 0);
-    if (reward) later(() => showReward(reward, coins.n - mgain - reward), t0);
-    let acc = coins.n - mgain;
-    [...rms.children].forEach((card, i) => {
-      const from = acc; acc += mdue[i].gain;
-      later(() => {
-        card.classList.add('in'); sfx.milestone();
-        if (mdue[i].gain) later(() => showReward(mdue[i].gain, from, card), reduceMotion ? 0 : 400);
-      }, t0 + (reward ? 300 : 0) + i * 600);
-    });
+    if (total) later(() => {
+      showReward(total, coins.n - total);
+      if (mdue.length) later(() => { [...rms.children].forEach((c) => c.classList.add('in')); sfx.milestone(); }, reduceMotion ? 0 : 300);
+    }, t0);
   }, wait);
 }
 
@@ -903,7 +900,7 @@ function leavePuzzle() {
 }
 $('puzzle-back').addEventListener('click', () => { sfx.tap(); leavePuzzle(); });
 $('puzzle-help').addEventListener('click', () => openSheet('help'));
-// パス: Lv が下がる（Lv2 以上）ときだけ、押すとボタンが 2 つに分かれる（`Lv 3 → 2` と `◎5 Lv 3`）。3 秒触らなければ戻る
+// パス: Lv が下がる（Lv2 以上）ときだけ、押すとボタンが 2 つに分かれる（`Lv 3 → 2` と コイン 5 の Lv 3）。3 秒触らなければ戻る
 const KEEP_COST = 5;
 let splitTimer = 0;
 function passReset() {
@@ -923,7 +920,7 @@ $('giveup').addEventListener('click', () => {
   if (!$('giveup-keep').hidden || auto.L < 2 || (coins.n < KEEP_COST && !Rewards.available())) { passDone(false); return; }
   sfx.tap();
   $('giveup').textContent = `Lv ${auto.L} → ${auto.L - 1}`;
-  $('giveup-keep').textContent = `${coins.n >= KEEP_COST ? `◎${KEEP_COST}` : '▶'} Lv ${auto.L}`;
+  $('giveup-keep').innerHTML = `${coins.n >= KEEP_COST ? `${COIN_SVG}${KEEP_COST}` : '▶'} Lv ${auto.L}`;
   $('giveup-keep').hidden = false;
   splitTimer = setTimeout(passReset, 3000);
 });
@@ -1090,7 +1087,7 @@ function renderGlyphs() {
   $('g-stage').classList.toggle('done', done);
   $('g-drawrow').innerHTML = done
     ? `<span class="gcount gold" aria-label="${G.ALL_ITEMS.length}/${G.ALL_ITEMS.length}">${G.ownedCount(got)}/${G.ALL_ITEMS.length}</span>`
-    : `<button class="btn btn--primary${coins.n < cost ? ' poor' : ''}" id="g-draw" aria-label="${cost ? L('引く（コイン 25）', 'Draw (25 coins)') : L('引く（無料）', 'Draw (free)')}">◎${cost}</button>`;
+    : `<button class="btn btn--primary${coins.n < cost ? ' poor' : ''}" id="g-draw" aria-label="${cost ? L('引く（コイン 25）', 'Draw (25 coins)') : L('引く（無料）', 'Draw (free)')}">${COIN_SVG}${cost}</button>`;
   const tabs = G.GLYPH_DESIGNS.map((d) => {
     const n = designCount(got, d.id), full = n === G.GLYPH_CHARS.length;
     const nm = DESIGN_NAME[d.id] || d.id;
