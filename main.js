@@ -4,6 +4,7 @@ import * as Rewards from './src/rewards.js';
 import * as G from './src/glyphs.js';
 import * as M from './src/milestones.js';
 import { dailyPuzzle } from './src/daily.js';
+import * as E from './src/edit.js';
 import { SIZE as TABLE_SIZE, mOf, lvOfByte } from './src/puzzle.js';
 
 // 画面の言葉。L('日本語', 'English') で、起動時に決めた言語のほうを使う（i18n.js）
@@ -612,9 +613,9 @@ let timers = [];
 const later = (fn, ms) => timers.push(setTimeout(fn, ms));
 const clearTimers = () => { timers.forEach(clearTimeout); timers = []; };
 const text = () => toks.join('');
-const isDigit = (t) => /^\d$/.test(t);
+const isDigit = E.isDigit;
 // 数字は最初から並べておき、記号だけを差し込む（数字は消せないので順番は崩れない）
-const canDelete = () => cur > 0 && !isDigit(toks[cur - 1]);
+const canDelete = () => E.canDelete(toks, cur);
 
 function openPuzzle(t, md = 'free') {
   mode = md;
@@ -823,9 +824,8 @@ function press(tok) {
   if (solved) return;
   if (cur === 0 && '×÷^).'.includes(tok)) { sfx.nope(); return; }
   if (text().length + tok.length > MAXLEN) { sfx.nope(); return; }
-  toks.splice(cur, 0, tok);
   popAt = cur;
-  cur++;
+  ({ toks, cur } = E.insertTok(toks, cur, tok));
   sfx.key(); buzz();
   update();
   popAt = -1;
@@ -833,52 +833,87 @@ function press(tok) {
 function backspace() {
   if (solved) return;
   if (!canDelete()) { sfx.nope(); return; }
-  toks.splice(cur - 1, 1); cur--;
+  ({ toks, cur } = E.deleteSymbol(toks, cur));
   sfx.del(); buzz();
   update();
 }
 function moveCaret(d) {
   if (solved) return;
-  const c = Math.max(0, Math.min(toks.length, cur + d));
-  if (c === cur) { sfx.nope(); return; }
-  cur = c; sfx.move(); update();
+  const r = E.moveBy(toks, cur, d);
+  if (!r) { sfx.nope(); return; }
+  ({ toks, cur } = r); sfx.move(); update();
 }
 function clearSymbols() {
   if (solved) return;
-  if (toks.length === digits.length) { sfx.nope(); return; }
-  toks = [...digits]; cur = 1;
+  const r = E.clearSymbols(toks);
+  if (!r) { sfx.nope(); return; }
+  ({ toks, cur } = r);
   sfx.del(); buzz();
   update();
 }
+
+// ⌫ を長押しすると記号を全部消す（離したときの click は数えない）
+let longPressed = false, longTimer = 0;
+const stopLong = () => { clearTimeout(longTimer); longTimer = 0; };
+$('key-back').addEventListener('pointerdown', () => {
+  longPressed = false; stopLong();
+  longTimer = setTimeout(() => { longTimer = 0; longPressed = true; clearSymbols(); }, 500);
+});
+for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) $('key-back').addEventListener(ev, stopLong);
 
 $('keys').addEventListener('click', (e) => {
   const b = e.target.closest('button');
   if (!b || solved) return;
   if (b.dataset.ch) return press(b.dataset.ch);
   const k = b.dataset.key;
-  if (k === 'back') backspace();
+  if (k === 'back') { if (longPressed) longPressed = false; else backspace(); }
   else if (k === 'left') moveCaret(-1);
   else if (k === 'right') moveCaret(1);
   else if (k === 'clear') clearSymbols();
   else if (k === 'factn') openN();
 });
 
-// 式をタップした場所に一番近い「すき間」にカーソルを置く
-$('expr').addEventListener('click', (e) => {
-  if (solved) return;
+// 式の上の x, y に一番近い「すき間」の位置
+function gapAt(x, y) {
   const spans = [...$('expr').querySelectorAll('span[data-i]')];
-  if (!spans.length) return;
   let bestPos = cur, bestD = Infinity;
   for (const sp of spans) {
     const r = sp.getBoundingClientRect();
     const i = Number(sp.dataset.i);
-    const dy = Math.abs(e.clientY - (r.top + r.height / 2)) * 3;
-    for (const [x, pos] of [[r.left, i], [r.right, i + 1]]) {
-      const d = Math.abs(e.clientX - x) + dy;
+    const dy = Math.abs(y - (r.top + r.height / 2)) * 3;
+    for (const [px, pos] of [[r.left, i], [r.right, i + 1]]) {
+      const d = Math.abs(x - px) + dy;
       if (d < bestD) { bestD = d; bestPos = pos; }
     }
   }
-  if (bestPos !== cur) { cur = bestPos; sfx.move(); update(); }
+  return bestPos;
+}
+function placeCaret(pos) {
+  if (pos === cur) return;
+  cur = pos; sfx.move(); update();
+}
+// 式をタップした場所に一番近いすき間にカーソルを置く。横になぞると指についてくる
+let swipe = null, swiped = false;
+$('expr').addEventListener('pointerdown', (e) => {
+  if (solved) return;
+  swipe = { id: e.pointerId, x: e.clientX, on: false };
+  swiped = false;
+});
+$('expr').addEventListener('pointermove', (e) => {
+  if (!swipe || e.pointerId !== swipe.id || solved) return;
+  if (!swipe.on) {
+    if (Math.abs(e.clientX - swipe.x) < 10) return;
+    swipe.on = true; swiped = true;
+    try { $('expr').setPointerCapture(e.pointerId); } catch { /* なくても動く */ }
+  }
+  if ($('expr').querySelector('span[data-i]')) placeCaret(gapAt(e.clientX, e.clientY));
+});
+for (const ev of ['pointerup', 'pointercancel']) $('expr').addEventListener(ev, () => { swipe = null; });
+$('expr').addEventListener('click', (e) => {
+  if (swiped) { swiped = false; return; }
+  if (solved) return;
+  if (!$('expr').querySelector('span[data-i]')) return;
+  placeCaret(gapAt(e.clientX, e.clientY));
 });
 
 // ---- N 重階乗の N ----

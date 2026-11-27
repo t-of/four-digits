@@ -1,5 +1,6 @@
 // 文字のコレクションの中身のテスト。node test.mjs で走る（フレームワークなし）。
 import assert from 'node:assert/strict';
+import { insertTok, deleteSymbol, clearSymbols, moveBy, canDelete, isDigit } from './src/edit.js';
 import { ALL_ITEMS, GLYPH_CHARS, GLYPH_DESIGNS, tryDraw, drawCost, odds, ownedCount, designDone, allDone, parseGlyphs, revealPlan, pickDesign } from './src/glyphs.js';
 
 const test = (name, fn) => { fn(); console.log('✓', name); };
@@ -259,4 +260,40 @@ test('今日の 1 問: 365 日で、同じ 4 桁が 30 日以内に 2 回出な�
 test('今日の 1 問: 同じ日付なら何度でも同じ（呼ぶ順によらない）', () => {
   const first = days365.map((k) => dailyPuzzle(k, tbl));
   for (const k of [...days365].reverse()) assert.deepEqual(dailyPuzzle(k, tbl), first[days365.indexOf(k)]);
+});
+
+// ---- 式の操作（src/edit.js） ----
+const parse = (s) => { const i = s.indexOf('|'); return { toks: [...s.replace('|', '')], cur: i }; };
+const show = ({ toks, cur }) => toks.slice(0, cur).join('') + '|' + toks.slice(cur).join('');
+
+test('⌫ は左で一番近い記号を消し、数字は飛ばす', () => {
+  const a = parse('2+|027');
+  assert.equal(show(deleteSymbol(a.toks, a.cur)), '2|027');
+  const b = parse('2+02|7');
+  assert.equal(show(deleteSymbol(b.toks, b.cur)), '202|7');
+});
+
+test('左に記号がなければ ⌫ は消せない', () => {
+  for (const s of ['|2027', '2027|', '20|27', '2|0+27']) {
+    const a = parse(s);
+    assert.equal(deleteSymbol(a.toks, a.cur), null, s);
+    assert.equal(canDelete(a.toks, a.cur), false, s);
+  }
+});
+
+test('数字はどの操作でも消えず、順番も変わらない（1,000 回）', () => {
+  const digits = [...'2027'];
+  const syms = ['+', '−', '×', '÷', '^', '(', ')', '.', '√', '!', '!{3}'];
+  let st = { toks: [...digits], cur: 1 };
+  for (let n = 0; n < 1000; n++) {
+    const r = Math.random();
+    let next;
+    if (r < 0.4) next = insertTok(st.toks, st.cur, syms[Math.floor(Math.random() * syms.length)]);
+    else if (r < 0.65) next = deleteSymbol(st.toks, st.cur);
+    else if (r < 0.95) next = moveBy(st.toks, st.cur, Math.random() < 0.5 ? -1 : 1);
+    else next = clearSymbols(st.toks);
+    if (next) st = next;
+    assert.deepEqual(st.toks.filter(isDigit), digits);
+    assert.ok(st.cur >= 0 && st.cur <= st.toks.length);
+  }
 });
