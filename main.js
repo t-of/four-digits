@@ -1,6 +1,7 @@
 import { analyze, isTarget, starsFor, formatValue, display } from './src/expr.js';
 import { sfx, setSound, unlockOnFirstTouch } from './src/sfx.js';
 import * as Rewards from './src/rewards.js';
+import * as G from './src/glyphs.js';
 
 // 画面の言葉。L('日本語', 'English') で、起動時に決めた言語のほうを使う（i18n.js）
 const L = I18n.L;
@@ -993,6 +994,86 @@ $('board-back').addEventListener('click', () => { sfx.tap(); if (boardFrom === '
 let tab = 'digits', numPick = 0;
 const zbody = $('z-body');
 
+// ---- 文字のコレクション: four-digits.glyphs = { v: 1, got: ["neon:7", …], seen: ["neon", …] } ----
+// 知らない id も消さずに残す（版を戻しても失わない）。seen は「新しい」の印用（まだ使わない）
+const glyphs = G.parseGlyphs(load('glyphs', null));
+const saveGlyphs = () => save('glyphs', glyphs);
+const rnd01 = () => { try { return crypto.getRandomValues(new Uint32Array(1))[0] / 4294967296; } catch { return Math.random(); } };
+const DESIGN_NAME = { neon: L('ネオン', 'Neon'), ink: L('墨', 'Ink'), pixel: L('ドット', 'Pixel') };
+
+// 本物の絵（glyphs/<デザイン>.svg。<symbol id="neon-7"> の形）があれば使い、なければ仮の描き方（Jost ＋ 色の板）
+// 読めたデザインは document に差し込み、symbol が見つかったタイルだけ <use> にする
+const spriteReady = new Set();
+const spriteBox = document.createElement('div');
+spriteBox.hidden = true;
+document.body.appendChild(spriteBox);
+for (const d of G.GLYPH_DESIGNS) {
+  fetch(`./glyphs/${d.id}.svg`).then((r) => (r.ok ? r.text() : '')).then((t) => {
+    if (!t || !/<symbol/.test(t)) return;
+    const w = document.createElement('div');
+    w.innerHTML = t;
+    spriteBox.appendChild(w);
+    spriteReady.add(d.id);
+    if (current === 'zukan' && tab === 'glyphs') renderGlyphsTab();
+  }).catch(() => { /* なければ仮の描き方 */ });
+}
+// タイル 1 枚の絵。品の id（"neon:7"）から作る。ここだけを差し替えればよい
+function glyphTile(id) {
+  const [d, c] = id.split(':');
+  const rare = G.isRare(id) ? ' rare' : '';
+  const sym = `${d}-${c}`;
+  if (spriteReady.has(d) && document.getElementById(sym)) {
+    return `<span class="gt gt--${d}${rare}"><svg viewBox="0 0 64 64" aria-hidden="true"><use href="#${sym}"/></svg></span>`;
+  }
+  const sign = /^\d$/.test(c) ? '' : ' sign';
+  return `<span class="gt gt--${d}${rare}${sign}"><i>${G.glyphLabel(c)}</i></span>`;
+}
+// 持っていない品の影（何の文字がまだかは分かる）
+const glyphShadow = (id) => `<span class="gt gt--shadow${G.isRare(id) ? ' rare' : ''}"><i>${G.glyphLabel(id.split(':')[1])}</i></span>`;
+
+function renderGlyphsTab() {
+  const n = G.ownedCount(glyphs.got), total = G.ALL_ITEMS.length;
+  const owned = G.ownedSet(glyphs.got);
+  const done = G.allDone(glyphs.got);
+  const cost = G.drawCost(glyphs.got);
+  let html = '';
+  if (!done) {
+    html += `<div class="gdraw"><span class="gdraw__tile" aria-hidden="true"></span>`
+      + `<button class="btn btn--primary${coins.n < cost ? ' poor' : ''}" id="g-draw" aria-label="${L('引く（コイン 25）', 'Draw (25 coins)')}">◎${cost}</button>`
+      + `<button class="gdraw__odds" id="g-odds" aria-label="${L('確率', 'Odds')}">%</button></div>`;
+  }
+  html += `<div class="gcount${done ? ' gold' : ''}">${n}/${total}</div>`;
+  for (const d of G.GLYPH_DESIGNS) {
+    const full = G.designDone(glyphs.got, d.id);
+    let tiles = '';
+    for (const c of G.GLYPH_CHARS) {
+      const id = `${d.id}:${c}`;
+      tiles += `<span class="gcell" data-g="${id}">${owned.has(id) ? glyphTile(id) : glyphShadow(id)}</span>`;
+    }
+    html += `<section class="gset${full ? ' gold' : ''}"><h3 class="gset__name gt-name--${d.id}">${DESIGN_NAME[d.id] || d.id}</h3><div class="ggrid">${tiles}</div></section>`;
+  }
+  zbody.innerHTML = html;
+}
+
+function drawGlyph() {
+  const r = G.tryDraw(glyphs.got, coins.n, rnd01);
+  if (!r.ok) { sfx.nope(); return; }
+  // コインを払うのと品を足すのを 1 つの流れで（払えなければ何も起きない）
+  if (r.cost > 0 && !coinSpend(r.cost)) { sfx.nope(); return; }
+  glyphs.got.push(r.id); saveGlyphs();
+  if (r.cost > 0) sfx.pay();
+  if (G.isRare(r.id)) sfx.record(); else sfx.key();
+  renderGlyphsTab();
+  const cell = zbody.querySelector(`[data-g="${r.id}"]`);
+  if (cell) { cell.scrollIntoView({ block: 'nearest' }); cell.classList.add('fresh'); }
+}
+
+function renderOdds() {
+  const o = G.odds(glyphs.got);
+  const row = (cls, v) => (v.n ? `<div class="odds__row"><span class="odds__mark ${cls}"></span><b>${v.pct}%</b><span>× ${v.n}</span></div>` : '');
+  $('odds-body').innerHTML = row('n', o.normal) + row('r', o.rare);
+}
+
 function openZukan() {
   show('zukan');
   const tt = totals();
@@ -1000,7 +1081,7 @@ function openZukan() {
     [L('解いた', 'Solved'), tt.solved], ['★3', tt.three], [L('4 桁', '4 digits'), tt.played], [L('制覇', 'Complete'), tt.full],
   ].map(([k, v]) => `<div class="stat"><b>${v}</b><small>${k}</small></div>`).join('');
   for (const b of document.querySelectorAll('.tab')) b.classList.toggle('on', b.dataset.tab === tab);
-  if (tab === 'digits') renderDigitsTab(); else if (numPick) renderNumberDetail(); else renderNumbersTab();
+  if (tab === 'digits') renderDigitsTab(); else if (tab === 'glyphs') renderGlyphsTab(); else if (numPick) renderNumberDetail(); else renderNumbersTab();
 }
 
 function renderDigitsTab() {
@@ -1043,6 +1124,8 @@ function renderNumberDetail() {
 }
 
 zbody.addEventListener('click', (e) => {
+  if (e.target.closest('#g-draw')) return drawGlyph();
+  if (e.target.closest('#g-odds')) { sfx.tap(); renderOdds(); return openSheet('odds'); }
   if (e.target.closest('#num-back')) { numPick = 0; sfx.tap(); return openZukan(); }
   const num = e.target.closest('button.num');
   if (num) { numPick = Number(num.dataset.t); sfx.tap(); return openZukan(); }

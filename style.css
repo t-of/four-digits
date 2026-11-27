@@ -799,7 +799,7 @@ code {
 .stat b { font-size: var(--fs-3); font-weight: 800; font-feature-settings: "tnum"; }
 .stat small { font-size: var(--fs-1); color: var(--tx2); letter-spacing: var(--track-label); }
 
-.tabs { display: grid; grid-template-columns: 1fr 1fr; padding: 4px; gap: 4px; background: var(--s1); border: 1px solid var(--line); border-radius: 14px; margin-bottom: 16px; }
+.tabs { display: grid; grid-template-columns: repeat(3, 1fr); padding: 4px; gap: 4px; background: var(--s1); border: 1px solid var(--line); border-radius: 14px; margin-bottom: 16px; }
 .tab { min-height: 40px; border-radius: 10px; font-size: var(--fs-2); font-weight: 600; color: var(--tx2); }
 .tab.on { background: var(--s3); color: var(--tx); }
 
@@ -1144,3 +1144,42 @@ code {
     radial-gradient(120% 60% at 50% -10%, var(--bg-glow) 0%, transparent 60%),
     var(--bg);
 }
+
+/* ---- 文字のコレクション ---- */
+.gdraw { position: relative; display: flex; align-items: center; justify-content: center; gap: 14px; padding: 8px 0 4px; }
+.gdraw__tile { width: 88px; height: 88px; border-radius: 14px; background: linear-gradient(135deg, #1b2130 40%, rgba(var(--gold-rgb), 0.55) 50%, #1b2130 60%); border: 1px solid var(--line2); }
+.gdraw .btn { width: auto; min-width: 110px; min-height: 52px; font-size: var(--fs-3); }
+.gdraw .btn.poor { opacity: 0.45; }
+.gdraw__odds { position: absolute; top: 0; right: 0; width: 36px; height: 36px; border-radius: 10px; color: var(--tx3); font-size: var(--fs-2); font-weight: 700; }
+.gcount { text-align: center; padding: 6px 0 10px; font-size: var(--fs-2); font-weight: 700; color: var(--tx2); font-feature-settings: "tnum"; letter-spacing: 0.04em; }
+.gcount.gold { color: var(--gold-tx); }
+.gset { margin-bottom: 14px; padding: 10px; border: 1px solid var(--line); border-radius: 14px; }
+.gset.gold { border-color: rgba(var(--gold-rgb), 0.6); }
+.gset__name { margin: 0 0 8px; font-size: var(--fs-1); font-weight: 700; letter-spacing: 0.12em; color: var(--tx2); }
+.gset.gold .gset__name { color: var(--gold-tx); }
+.gt-name--neon { color: #ff4fa3; text-shadow: 0 0 8px rgba(255, 79, 163, 0.6); }
+.gt-name--ink { font-family: "Hiragino Mincho ProN", "Yu Mincho", serif; }
+.ggrid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+.gcell { aspect-ratio: 1; display: block; }
+.gcell.fresh { animation: gfresh 0.9s ease-out; }
+@keyframes gfresh { from { filter: brightness(2.2); } to { filter: none; } }
+/* タイル（仮。本物の絵があれば <svg> が入る） */
+.gt { position: relative; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; border-radius: 10px; overflow: hidden; font-family: "Jost", sans-serif; }
+.gt i { font-style: normal; font-weight: 600; font-size: clamp(18px, 7.5vw, 30px); line-height: 1; }
+.gt svg { width: 100%; height: 100%; display: block; }
+.gt--neon { background: #0c1233; color: #ff4fa3; box-shadow: inset 0 0 0 1px #1d2a6b; }
+.gt--neon i { text-shadow: 0 0 6px currentColor, 0 0 14px currentColor; }
+.gt--neon.sign { color: #4fe3ff; }
+.gt--ink { background: #f1ebdc; color: #151515; }
+.gt--ink i { font-weight: 500; }
+.gt--pixel { background: #0f380f; color: #9bbc0f; box-shadow: inset 0 0 0 3px #306230; }
+.gt--pixel i { font-weight: 700; }
+.gt--shadow { background: var(--s2); color: var(--tx3); opacity: 0.7; }
+.gt--shadow i { font-weight: 500; }
+.gt.rare::after { content: ""; position: absolute; top: 4px; right: 4px; width: 5px; height: 5px; border-radius: 50%; background: var(--gold); }
+.odds { display: flex; flex-direction: column; gap: 10px; padding: 4px 0 8px; }
+.odds__row { display: flex; align-items: center; gap: 14px; font-size: var(--fs-3); font-feature-settings: "tnum"; }
+.odds__row b { min-width: 72px; }
+.odds__row span:last-child { color: var(--tx2); }
+.odds__mark { width: 22px; height: 22px; border-radius: 6px; background: var(--s3); border: 1px solid var(--line2); }
+.odds__mark.r { background: var(--gold-dim); border-color: var(--gold); }
