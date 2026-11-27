@@ -3,6 +3,7 @@ import { sfx, setSound, unlockOnFirstTouch } from './src/sfx.js';
 import * as Rewards from './src/rewards.js';
 import * as G from './src/glyphs.js';
 import * as M from './src/milestones.js';
+import { dailyPuzzle } from './src/daily.js';
 import { SIZE as TABLE_SIZE, mOf, lvOfByte } from './src/puzzle.js';
 
 // 画面の言葉。L('日本語', 'English') で、起動時に決めた言語のほうを使う（i18n.js）
@@ -402,30 +403,7 @@ const two = (n) => String(n).padStart(2, '0');
 const dateKey = (d) => `${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())}`;
 let dailyDate = dateKey(new Date());
 
-// 日付の文字列から決まった乱数列を作る（全端末で同じ結果。FNV-1a → mulberry32）
-function seeded(str) {
-  let h = 2166136261;
-  for (const ch of str) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); }
-  let a = h >>> 0;
-  return () => {
-    a = (a + 0x6D2B79F5) >>> 0;
-    let t = a;
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-// 難しさ 3 か 4 の問題を引く。[4桁の数, 目標]
-function dailyPuzzle(key) {
-  const rnd = seeded(`four-digits:${key}`);
-  for (;;) {
-    const i = Math.floor(rnd() * 1000000);
-    const n = Math.floor(i / 100), t = (i % 100) + 1;
-    if (!minTable) return [n, t];
-    const lv = lvOf(n, t);
-    if (lv === 3 || lv === 4) return [n, t];
-  }
-}
+// 今日の 1 問は src/daily.js（切り替えの日から選び方が変わる）
 // 守った日（four-digits.guard）は数えないがつなぐ。星の記録（daily）には書かない
 const guard = (() => { const d = load('guard', []); return Array.isArray(d) ? d.filter((x) => typeof x === 'string') : []; })();
 const GUARD_COST = 30;
@@ -554,7 +532,7 @@ $('daily-btn').addEventListener('click', async () => {
   sfx.tap();
   await tableReady;
   dailyDate = dateKey(new Date());
-  const [n, t] = dailyPuzzle(dailyDate);
+  const [n, t] = dailyPuzzle(dailyDate, minTable);
   digits = pad4(n);
   openPuzzle(t, 'daily');
 });

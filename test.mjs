@@ -222,3 +222,41 @@ test('puzzle2.bin: 今日向きの印は 33,269 問', () => {
 test('lvFrom: 段と m の表', () => {
   assert.deepEqual([lvFrom(0, 2), lvFrom(0, 3), lvFrom(1, 2), lvFrom(1, 4), lvFrom(2, 2), lvFrom(2, 3), lvFrom(2, 4), lvFrom(0, 5)], [1, 2, 2, 3, 3, 4, 5, 5]);
 });
+
+// ---- 今日の 1 問 ----
+import { dailyPuzzle, SWITCH_DATE } from './src/daily.js';
+const addDays = (key, n) => new Date(Date.parse(key) + n * 86400000).toISOString().slice(0, 10);
+// 前の main.js の dailyPuzzle（難しさ 3 か 4 から選ぶ）をそのまま写したもの
+function oldDaily(key) {
+  const seed = (str) => {
+    let h = 2166136261;
+    for (const ch of str) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); }
+    let a = h >>> 0;
+    return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  };
+  const rnd = seed(`four-digits:${key}`);
+  for (;;) {
+    const i = Math.floor(rnd() * 1000000);
+    const lv = old[i] >> 5;
+    if (lv === 3 || lv === 4) return [Math.floor(i / 100), (i % 100) + 1];
+  }
+}
+const days365 = Array.from({ length: 365 }, (_, i) => addDays(SWITCH_DATE, i));
+
+test('今日の 1 問: 切り替えの日の前の 30 日は、前と同じ問題', () => {
+  for (let i = 1; i <= 30; i++) {
+    const k = addDays(SWITCH_DATE, -i);
+    assert.deepEqual(dailyPuzzle(k, tbl), oldDaily(k), k);
+  }
+});
+test('今日の 1 問: 切り替えの日から 365 日、全部が今日向き', () => {
+  for (const k of days365) { const [n, t] = dailyPuzzle(k, tbl); assert.ok(isTodayFit(tbl[n * 100 + t - 1]), k); }
+});
+test('今日の 1 問: 365 日で、同じ 4 桁が 30 日以内に 2 回出ない', () => {
+  const ns = days365.map((k) => dailyPuzzle(k, tbl)[0]);
+  for (let i = 0; i < ns.length; i++) for (let j = i + 1; j < Math.min(ns.length, i + 31); j++) assert.notEqual(ns[i], ns[j], `${days365[i]} と ${days365[j]}`);
+});
+test('今日の 1 問: 同じ日付なら何度でも同じ（呼ぶ順によらない）', () => {
+  const first = days365.map((k) => dailyPuzzle(k, tbl));
+  for (const k of [...days365].reverse()) assert.deepEqual(dailyPuzzle(k, tbl), first[days365.indexOf(k)]);
+});
