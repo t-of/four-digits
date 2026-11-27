@@ -33,7 +33,8 @@ python3 -m http.server 8000   # → http://localhost:8000/
 
 端末の中（localStorage）にだけ保存する。外へ送らない。キーはすべて `four-digits.` で始まる。
 
-- `best` `coins` `daily` `glyphs` `guard` `help` `intro` `milestones` `recent` `settings` `shop` `theme` `tut` `auto` `lang`: 遊んだ記録と設定
+- `glyphs`: ガチャ。`{ v: 1, got: ["neon:7", …], seen: ["neon", …], shards: { neon: 3, … } }`。`got` は持っている文字（`<デザイン>:<文字>`）、`shards` はデザインごとのかけら（だぶり 1 回で +1、10 個で、そのデザインの持っていない好きな 1 文字と交換）。`shards` が無い・壊れているときは 0。知らない項目は消さない。ガチャは選んだデザインの 20 文字から引く（1 回 ◎25、何も持っていない最初の 1 回だけ無料）。
+- `best` `coins` `daily` `guard` `help` `intro` `milestones` `recent` `settings` `shop` `theme` `tut` `auto` `lang`: 遊んだ記録と設定
 - `ad`: 全画面広告の回の数え方（iOS 版）
 - `remind`: 毎日の通知の入・切（iOS 版）
 - `noads`: `'1'`（広告なしを買った）/ `'0'`。起動直後の見た目の控えで、買ったかどうかはストアが決める（iOS 版）

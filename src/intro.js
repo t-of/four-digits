@@ -42,8 +42,8 @@ export function createIntro(deps) {
   let list = [], at = 0, mode = 'all', done = null, from = null, open = false, dir = 1;
 
   const price = G.GLYPH_PRICE;
-  // かけら 10 個で好きな 1 文字（だぶると、そのデザインのかけらが 1 つたまる）。ガチャの仕様が変わったら glyphs.js の定数に差し替える
-  const SHARDS = 10;
+  // かけら 10 個で好きな 1 文字（だぶると、そのデザインのかけらが 1 つたまる）
+  const SHARDS = G.SHARD_COST;
   const facts = coinFacts();
 
   const cards = {

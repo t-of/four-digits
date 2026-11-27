@@ -76,7 +76,7 @@ const I18n = (() => {
     tabDigits: '4 digits',
     tabNumbers: 'Targets',
     glyphs: 'Gacha',
-    oddsTitle: "Only ones you don't have",
+    oddsTitle: 'Odds per design',
     odds: 'Odds',
     noadsAria: 'Remove ads',
     noadsPrice: '$2.99 · one-time purchase',

@@ -2,55 +2,94 @@
 import assert from 'node:assert/strict';
 import { insertTok, deleteSymbol, clearSymbols, moveBy, canDelete, isDigit } from './src/edit.js';
 import { createAuto } from './src/auto.js';
-import { ALL_ITEMS, GLYPH_CHARS, GLYPH_DESIGNS, tryDraw, drawCost, odds, ownedCount, designDone, allDone, parseGlyphs, revealPlan, pickDesign } from './src/glyphs.js';
+import { ALL_ITEMS, GLYPH_CHARS, GLYPH_DESIGNS, SHARD_COST, tryDraw, drawCost, odds, ownedCount, designDone, allDone, parseGlyphs, revealPlan, pickDesign, shardsOf, addShard, canExchange, exchange, designItems } from './src/glyphs.js';
 
 const test = (name, fn) => { fn(); console.log('✓', name); };
 
 test('デザイン × 20 文字ある', () => { assert.equal(GLYPH_CHARS.length, 20); assert.equal(ALL_ITEMS.length, GLYPH_DESIGNS.length * 20); });
 
-test('全部引くとそろい、かぶらない', () => {
-  for (const rnd of [Math.random, () => 0, () => 0.999999]) {
-    const got = [];
-    for (let i = 0; i < ALL_ITEMS.length; i++) {
-      const r = tryDraw(got, 1000, rnd);
-      assert.ok(r.ok);
-      assert.ok(!got.includes(r.id), 'かぶった');
-      got.push(r.id);
-    }
-    assert.equal(ownedCount(got), ALL_ITEMS.length);
-    assert.ok(allDone(got));
-    assert.ok(GLYPH_DESIGNS.every((d) => designDone(got, d.id)));
-    assert.equal(tryDraw(got, 1000, rnd).ok, false);
+test('引くのは選んだデザインの 20 文字から。そろい終わると引けない', () => {
+  const got = [];
+  let draws = 0;
+  while (!designDone(got, 'ink')) {
+    const r = tryDraw(got, 1000, Math.random, 'ink');
+    assert.ok(r.ok && r.id.startsWith('ink:'));
+    assert.equal(r.dupe, got.includes(r.id));
+    if (!r.dupe) got.push(r.id);
+    assert.ok(++draws < 5000);
   }
+  assert.equal(ownedCount(got), 20);
+  assert.equal(tryDraw(got, 1000, Math.random, 'ink').ok, false);
+  assert.equal(tryDraw(got, 1000, Math.random, 'neon').ok, true);
+  assert.equal(tryDraw(['neon:1'], 1000, Math.random, 'nope').ok, false);
+});
+
+test('持っているものが出たら dupe（だぶり）', () => {
+  const got = ['neon:0', 'neon:1'];
+  const r = tryDraw(got, 100, () => 0, 'neon');
+  assert.deepEqual([r.id, r.dupe], ['neon:0', true]);
+  const r2 = tryDraw(['neon:1'], 100, () => 0, 'neon');
+  assert.deepEqual([r2.id, r2.dupe], ['neon:0', false]);
+});
+
+test('かけら: 足す・数える・壊れた値は 0', () => {
+  let s = {};
+  for (let i = 0; i < 3; i++) s = addShard(s, 'neon');
+  assert.equal(shardsOf(s, 'neon'), 3);
+  assert.equal(shardsOf(s, 'ink'), 0);
+  assert.equal(shardsOf({ neon: 'x' }, 'neon'), 0);
+  assert.equal(shardsOf({ neon: -2 }, 'neon'), 0);
+  assert.equal(shardsOf(undefined, 'neon'), 0);
+});
+
+test('交換: 10 個でそのデザインの持っていない 1 文字。9 個・持っている文字・別デザインは不可', () => {
+  assert.equal(SHARD_COST, 10);
+  const got = ['neon:1'];
+  assert.equal(canExchange(got, { neon: 9 }, 'neon:2'), false);
+  assert.equal(canExchange(got, { neon: 10 }, 'neon:1'), false);
+  assert.equal(canExchange(got, { neon: 10 }, 'ink:2'), false);
+  assert.equal(canExchange(got, { ink: 10 }, 'neon:2'), false);
+  assert.equal(canExchange(got, { neon: 10 }, 'neon:future'), false);
+  const r = exchange(got, { neon: 12, ink: 4 }, 'neon:pow');
+  assert.ok(r.ok);
+  assert.deepEqual(r.got, ['neon:1', 'neon:pow']);
+  assert.deepEqual(r.shards, { neon: 2, ink: 4 });
+  assert.deepEqual(got, ['neon:1']);
+  assert.equal(exchange(got, { neon: 9 }, 'neon:2').ok, false);
 });
 
 test('最初の 1 回は 0、次から 25', () => {
   assert.equal(drawCost([]), 0);
-  const r = tryDraw([], 0, Math.random);
+  const r = tryDraw([], 0, Math.random, 'neon');
   assert.ok(r.ok && r.cost === 0);
   assert.equal(drawCost([r.id]), 25);
 });
 
 test('コイン 24 では引けない、25 なら引ける', () => {
   const got = ['neon:7'];
-  assert.equal(tryDraw(got, 24, Math.random).ok, false);
-  assert.equal(tryDraw(got, 25, Math.random).ok, true);
+  assert.equal(tryDraw(got, 24, Math.random, 'neon').ok, false);
+  assert.equal(tryDraw(got, 25, Math.random, 'neon').ok, true);
 });
 
-test('確率は仕様の値（5 デザインで最初 1.2% と 0.4%、最後の 1 個は 100%）', () => {
-  const o = odds([]);
-  assert.deepEqual([o.normal.n, o.normal.pct, o.rare.n, o.rare.pct], [80, 1.2, 20, 0.4]);
-  const got = ALL_ITEMS.slice(0, -1);
-  const last = odds(got);
-  assert.equal(last.normal.n + last.rare.n, 1);
-  assert.equal(last.normal.n ? last.normal.pct : last.rare.pct, 100);
+test('確率はデザインごと（ふつう 16 個 5.8%、レア 4 個 1.9%）。持っていても変わらない', () => {
+  const o = odds('neon');
+  assert.deepEqual([o.normal.n, o.normal.pct, o.rare.n, o.rare.pct], [16, 5.8, 4, 1.9]);
+  assert.deepEqual(odds('gem'), o);
 });
 
 test('知らない id は残り、数えない', () => {
   const s = parseGlyphs({ v: 1, got: ['neon:7', 'future:7'], seen: ['neon'] });
   assert.deepEqual(s.got, ['neon:7', 'future:7']);
   assert.equal(ownedCount(s.got), 1);
-  assert.deepEqual(parseGlyphs(null), { v: 1, got: [], seen: [] });
+  assert.deepEqual(parseGlyphs(null), { v: 1, got: [], seen: [], shards: {} });
+  assert.deepEqual(parseGlyphs({ v: 1, got: ['neon:7'], seen: [], x: 5 }), { v: 1, got: ['neon:7'], seen: [], shards: {}, x: 5 });
+});
+
+test('古い保存（shards なし）・壊れた shards は 0 から。ある shards は残る', () => {
+  assert.deepEqual(parseGlyphs({ v: 1, got: ['neon:7'], seen: ['neon'] }).shards, {});
+  assert.deepEqual(parseGlyphs({ v: 1, got: [], seen: [], shards: 'x' }).shards, {});
+  assert.deepEqual(parseGlyphs({ v: 1, got: [], seen: [], shards: [3] }).shards, {});
+  assert.deepEqual(parseGlyphs({ v: 1, got: [], seen: [], shards: { neon: 3, ink: 'a', gem: -1, pixel: 1.5 } }).shards, { neon: 3 });
 });
 
 // ---- 節目のコイン ----

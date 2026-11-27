@@ -1,5 +1,5 @@
-// 文字のコレクション（コインで引く）。仕様は本部の docs/private/specs/four-digits-gacha.md。
-// ここは画面を持たない純粋な部分（品の一覧・抽選・確率）。main.js が使い、test.mjs が確かめる。
+// 文字のコレクション（コインで引く。デザインごと・だぶりはかけら）。仕様は本部の docs/private/specs/four-digits-gacha.md。
+// ここは画面を持たない純粋な部分（品の一覧・抽選・確率・かけら）。main.js が使い、test.mjs が確かめる。
 
 // 文字は 20 個で固定。増やすのはデザインだけ（末尾に足す。消さない・並べ替えない）。
 export const GLYPH_CHARS = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'add', 'sub', 'mul', 'div', 'lp', 'rp', 'pow', 'sqrt', 'fact', 'dot'];
@@ -35,44 +35,69 @@ export const designDone = (got, designId) => {
 };
 export const allDone = (got) => ownedCount(got) >= ALL_ITEMS.length;
 
-export const remaining = (got) => { const s = ownedSet(got); return ALL_ITEMS.filter((id) => !s.has(id)); };
+// かけら 10 個で、そのデザインのまだ持っていない好きな 1 文字（レアも同じ）
+export const SHARD_COST = 10;
 
-// 何も持っていない最初の 1 回だけ 0
+export const designItems = (designId) => GLYPH_CHARS.map((c) => `${designId}:${c}`);
+// そのデザインでまだ持っていない品
+export const remaining = (got, designId) => { const s = ownedSet(got); return designItems(designId).filter((id) => !s.has(id)); };
+
+// 何も持っていない最初の 1 回だけ 0（全体で 1 回。どのデザインで使ってもよい）
 export const drawCost = (got) => (ownedCount(got) === 0 ? 0 : GLYPH_PRICE);
 
-// rnd は 0 以上 1 未満を返す関数。残っている品の重みで 1 個選ぶ
-export function pickGlyph(got, rnd) {
-  const rest = remaining(got);
-  if (!rest.length) return null;
-  let r = rnd() * rest.reduce((a, id) => a + weightOf(id), 0);
-  for (const id of rest) { r -= weightOf(id); if (r < 0) return id; }
-  return rest[rest.length - 1];
+// rnd は 0 以上 1 未満を返す関数。そのデザインの 20 文字すべてから、重みで 1 個選ぶ（持っているものも出る）
+export function pickGlyph(designId, rnd) {
+  const all = designItems(designId);
+  let r = rnd() * all.reduce((a, id) => a + weightOf(id), 0);
+  for (const id of all) { r -= weightOf(id); if (r < 0) return id; }
+  return all[all.length - 1];
 }
 
-// 引けるか。足りなければ { ok: false }（何も変えない）
-export function tryDraw(got, balance, rnd) {
+// 引けるか。足りない・そろい終わっているときは { ok: false }（何も変えない）
+// 出たものが持っているものなら dupe: true（呼ぶ側が addShard する）
+export function tryDraw(got, balance, rnd, designId) {
   const cost = drawCost(got);
-  if (allDone(got) || balance < cost) return { ok: false, cost };
-  return { ok: true, cost, id: pickGlyph(got, rnd) };
+  if (!GLYPH_DESIGNS.some((d) => d.id === designId) || designDone(got, designId) || balance < cost) return { ok: false, cost };
+  const id = pickGlyph(designId, rnd);
+  return { ok: true, cost, id, dupe: ownedSet(got).has(id) };
 }
 
-// 今残っている品での確率（%）と個数。{ normal: { n, pct }, rare: { n, pct } }
-export function odds(got) {
-  const rest = remaining(got);
-  const nR = rest.filter(isRare).length, nN = rest.length - nR;
+// かけら（デザイン id → 個数）
+export const shardsOf = (shards, designId) => { const n = shards && shards[designId]; return Number.isInteger(n) && n > 0 ? n : 0; };
+export const addShard = (shards, designId) => ({ ...shards, [designId]: shardsOf(shards, designId) + 1 });
+// 交換できるか: そのデザインの、まだ持っていない品で、かけらが足りる
+export const canExchange = (got, shards, id) => {
+  const d = String(id).split(':')[0];
+  return GLYPH_DESIGNS.some((x) => x.id === d) && ALL_ITEMS.includes(id) && !ownedSet(got).has(id) && shardsOf(shards, d) >= SHARD_COST;
+};
+// 交換する。できなければ { ok: false }。できたら新しい got と shards（元は変えない）
+export function exchange(got, shards, id) {
+  if (!canExchange(got, shards, id)) return { ok: false };
+  const d = id.split(':')[0];
+  return { ok: true, got: [...got, id], shards: { ...shards, [d]: shardsOf(shards, d) - SHARD_COST } };
+}
+
+// そのデザインの確率（%）と個数。1 個あたりの確率は常に同じ。{ normal: { n, pct }, rare: { n, pct } }
+export function odds(designId) {
+  const all = designItems(designId);
+  const nR = all.filter(isRare).length, nN = all.length - nR;
   const total = nN * W_NORMAL + nR * W_RARE;
-  const pct = (w) => (total ? Math.round((w / total) * 1000) / 10 : 0);
+  const pct = (w) => Math.round((w / total) * 1000) / 10;
   return { normal: { n: nN, pct: pct(W_NORMAL) }, rare: { n: nR, pct: pct(W_RARE) } };
 }
 
-// 保存データの読み書き。知らない id も消さずに残す
+// 保存データの読み書き。知らない id・知らない項目も消さずに残す。shards が無い・壊れているときは空（0 個）
 export function parseGlyphs(d) {
   if (d && d.v === 1 && Array.isArray(d.got)) {
     const got = [];
     for (const id of d.got) if (typeof id === 'string' && !got.includes(id)) got.push(id);
-    return { v: 1, got, seen: Array.isArray(d.seen) ? d.seen.filter((s) => typeof s === 'string') : [] };
+    const shards = {};
+    if (d.shards && typeof d.shards === 'object' && !Array.isArray(d.shards)) {
+      for (const [k, n] of Object.entries(d.shards)) if (Number.isInteger(n) && n > 0) shards[k] = n;
+    }
+    return { ...d, v: 1, got, seen: Array.isArray(d.seen) ? d.seen.filter((s) => typeof s === 'string') : [], shards };
   }
-  return { v: 1, got: [], seen: [] };
+  return { v: 1, got: [], seen: [], shards: {} };
 }
 
 // 引く演出の段と秒数（ms）。main.js はこの表どおりに流す。仕様 B-4

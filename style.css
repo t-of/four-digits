@@ -1250,7 +1250,22 @@ code {
 .godds__it { display: inline-flex; align-items: center; gap: 5px; }
 .godds .odds__mark { width: 12px; height: 12px; border-radius: 3px; }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.gdrawrow__main { display: flex; align-items: center; justify-content: center; gap: 12px; }
 .gdrawrow .btn { width: 160px; font-size: var(--fs-3); }
+.gdrawrow .gx-cancel { width: 56px; padding: 0; }
+.shard { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.gshard { display: inline-flex; align-items: center; gap: 5px; min-width: 64px; min-height: 48px; justify-content: center; padding: 0 10px; border-radius: 14px; border: 1px solid var(--line); color: var(--tx2); font-size: var(--fs-3); font-weight: 700; font-feature-settings: "tnum"; }
+.gshard.on { border-color: var(--gold); color: var(--gold-tx); background: rgba(var(--gold-rgb), 0.12); }
+.gshard.bump { animation: gbump 0.4s ease-out; }
+@keyframes gbump { 0% { transform: scale(1); } 40% { transform: scale(1.25); color: var(--gold-tx); } 100% { transform: none; } }
+.btn .shard { width: 18px; height: 18px; vertical-align: -3px; margin-right: 4px; }
+.gfx__dupe { position: absolute; left: 50%; top: 100%; transform: translateX(-50%); margin-top: 14px; display: inline-flex; align-items: center; gap: 5px; padding: 6px 12px; border-radius: 999px; background: rgba(0, 0, 0, 0.6); color: var(--gold-tx); font-size: var(--fs-3); font-weight: 700; white-space: nowrap; pointer-events: none; }
+.gcell--x { cursor: pointer; border-radius: 12px; }
+.gcell--x .gdraw__tile { width: 100%; height: 100%; border-radius: inherit; }
+.gcell--x.sel { outline: 2px solid var(--gold); outline-offset: 1px; border-radius: 12px; }
+.odds__row--shard b { min-width: 0; }
+.odds__row--shard .shard { vertical-align: -3px; margin-right: 3px; }
+.odds__sym { min-width: 72px; color: var(--tx2); }
 .gdrawrow .btn.poor { opacity: 0.45; }
 .gcount { text-align: center; font-size: var(--fs-3); font-weight: 700; color: var(--tx2); font-feature-settings: "tnum"; letter-spacing: 0.04em; }
 .gcount.gold { color: var(--gold-tx); }
@@ -1298,7 +1313,7 @@ code {
 .gzoom__tile { width: var(--gz); height: var(--gz); }
 .gzoom .gt { border-radius: 16px; }
 .gzoom .gt i { font-size: calc(var(--gz) * 0.5); }
-@media (prefers-reduced-motion: reduce) { .gstage__tile::before, .gtab.gold::before { animation: none; display: none; } .ggrid.lap, .gtab.lap, .gcell.fresh { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .gstage__tile::before, .gtab.gold::before { animation: none; display: none; } .ggrid.lap, .gtab.lap, .gcell.fresh, .gshard.bump { animation: none; } }
 
 /* ななめに流れる光の筋は線に見えるので出さない（2026-11-27 オーナー） */
 .gfx__slash, .gstage__tile::before, .gtab.gold::before, .gtab.gold.lap::before { display: none; }

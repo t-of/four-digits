@@ -218,6 +218,7 @@ const shop = (() => {
 })();
 const saveShop = () => save('shop', shop);
 let shopAsk = null;   // 買う確認に変わっているカード
+const SHARD_SVG = '<svg class="shard" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5l7 8.5-7 10.5L5 11z"/><path d="M5 11h14M9.5 6.7L12 11l2.5-4.3"/></svg>';
 const COIN_SVG = '<svg class="coin" viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="10.5" rx="8.5" ry="5.5"/><path d="M3.5 10.5v3c0 3 3.8 5.5 8.5 5.5s8.5-2.5 8.5-5.5v-3"/></svg>';
 function applyFont() {
   if (shop.font) document.documentElement.dataset.font = shop.font; else delete document.documentElement.dataset.font;
@@ -1274,7 +1275,7 @@ $('board-back').addEventListener('click', () => { sfx.tap(); if (boardFrom === '
 let tab = 'numbers', numPick = 0;
 const zbody = $('z-body');
 
-// ---- 文字のコレクション: four-digits.glyphs = { v: 1, got: ["neon:7", …], seen: ["neon", …] } ----
+// ---- 文字のコレクション: four-digits.glyphs = { v: 1, got: ["neon:7", …], seen: ["neon", …], shards: { neon: 3, … } } ----
 // 知らない id も消さずに残す（版を戻しても失わない）。seen は「新しい」の印用（まだ使わない）
 const glyphs = G.parseGlyphs(load('glyphs', null));
 const saveGlyphs = () => save('glyphs', glyphs);
@@ -1340,22 +1341,37 @@ let gsel = G.GLYPH_DESIGNS[0].id, lastGlyph = null;
 // 演出中は、引いた品をまだ影のまま見せる（しまう段で入れる）
 let pending = null;
 const gotView = () => (pending ? glyphs.got.filter((id) => id !== pending) : glyphs.got);
-const glyphsDot = () => !tutNow() && (glyphsNew() || (!G.allDone(glyphs.got) && G.drawCost(glyphs.got) === 0));
+// 金の点: 新しいデザイン・無料の 1 回がある・かけらで交換できる文字がある
+const canSwap = (d) => !G.designDone(glyphs.got, d) && G.shardsOf(glyphs.shards, d) >= G.SHARD_COST;
+const glyphsDot = () => !tutNow() && (glyphsNew() || (!G.allDone(glyphs.got) && G.drawCost(glyphs.got) === 0) || G.GLYPH_DESIGNS.some((d) => canSwap(d.id)));
+// 交換の途中: null か { sel: 選んだ品 or null }（保存しない）
+let xmode = null;
+// 演出中のだぶりは、かけらをまだ足さずに見せる（しまう段で増える）
+let pendingShard = null;
+const shardView = (d) => G.shardsOf(glyphs.shards, d) - (pendingShard === d ? 1 : 0);
 const designCount = (got, d) => G.GLYPH_CHARS.filter((c) => G.ownedSet(got).has(`${d}:${c}`)).length;
 
 function renderGlyphs() {
   // 描き直すとフォーカスが消えるので、押していた物（引くボタン・タブ・マス）に戻す
-  const a = document.activeElement, back = a && $('s-glyphs').contains(a) ? (a.id ? `#${a.id}` : a.dataset.d ? `[data-d="${a.dataset.d}"]` : a.dataset.g ? `[data-g="${a.dataset.g}"]` : '') : '';
+  const a = document.activeElement, back = a && $('s-glyphs').contains(a) ? (a.id ? `#${a.id}` : a.dataset.d ? `[data-d="${a.dataset.d}"]` : a.dataset.g ? `[data-g="${a.dataset.g}"]` : a.dataset.x ? `[data-x="${a.dataset.x}"]` : '') : '';
   renderGlyphsInner();
   if (back) $('s-glyphs').querySelector(back)?.focus();
 }
 function renderGlyphsInner() {
-  const got = gotView(), owned = G.ownedSet(got), done = G.allDone(got), cost = G.drawCost(got);
+  const got = gotView(), owned = G.ownedSet(got), cost = G.drawCost(got);
+  const dn = designCount(got, gsel), done = dn === G.GLYPH_CHARS.length, sh = shardView(gsel);
   $('g-stage').classList.toggle('done', done);
-  $('g-drawrow').innerHTML = done
-    ? `<span class="gcount gold" aria-label="${G.ALL_ITEMS.length}/${G.ALL_ITEMS.length}">${G.ownedCount(got)}/${G.ALL_ITEMS.length}</span>`
-    : `<button class="btn btn--primary${coins.n < cost ? ' poor' : ''}" id="g-draw" aria-label="${cost ? L('引く（コイン 25）', 'Draw (25 coins)') : L('引く（無料）', 'Draw (free)')}">${COIN_SVG}${cost}</button>`
-      + oddsLine(got);
+  const shardChip = sh >= G.SHARD_COST && !done
+    ? `<button class="gshard on" id="g-swap" aria-label="${L(`かけら ${sh}。文字と交換`, `${sh} shards. Trade for a glyph`)}">${SHARD_SVG}<b>${sh}</b></button>`
+    : `<span class="gshard" role="img" aria-label="${L(`かけら ${sh}`, `${sh} shards`)}">${SHARD_SVG}<b>${sh}</b></span>`;
+  if (done) $('g-drawrow').innerHTML = `<span class="gcount gold" aria-label="${dn}/${dn}">${dn}/${dn}</span>`;
+  else if (xmode) {
+    $('g-drawrow').innerHTML = `<div class="gdrawrow__main"><button class="btn btn--ghost gx-cancel" id="g-xno" aria-label="${L('やめる', 'Cancel')}">✕</button>`
+      + `<button class="btn btn--primary" id="g-xok"${xmode.sel ? '' : ' disabled'} aria-label="${L('これと交換', 'Trade for this')}">${SHARD_SVG}${G.SHARD_COST}</button></div>`;
+  } else {
+    $('g-drawrow').innerHTML = `<div class="gdrawrow__main"><button class="btn btn--primary${coins.n < cost ? ' poor' : ''}" id="g-draw" aria-label="${cost ? L('引く（コイン 25）', 'Draw (25 coins)') : L('引く（無料）', 'Draw (free)')}">${COIN_SVG}${cost}</button>${shardChip}</div>`
+      + oddsLine(gsel);
+  }
   const tabs = G.GLYPH_DESIGNS.map((d) => {
     const n = designCount(got, d.id), full = n === G.GLYPH_CHARS.length;
     const nm = DESIGN_NAME[d.id] || d.id;
@@ -1369,20 +1385,27 @@ function renderGlyphsInner() {
     const id = `${gsel}:${c}`, nm = DESIGN_NAME[gsel] || gsel, ch = G.glyphLabel(c);
     tiles += owned.has(id)
       ? `<button class="gcell" data-g="${id}" aria-label="${ch} · ${nm}">${glyphTile(id)}</button>`
+      : xmode && !done
+        ? (xmode.sel === id
+          ? `<button class="gcell gcell--x sel" data-x="${id}" aria-pressed="true" aria-label="${ch} · ${nm}">${glyphTile(id)}</button>`
+          : `<button class="gcell gcell--x" data-x="${id}" aria-pressed="false" aria-label="${L('伏せたタイル', 'Face-down tile')} ${ch}"><span class="gdraw__tile" aria-hidden="true"><svg viewBox="0 0 100 100"><use href="#back"/></svg></span></button>`)
       : `<span class="gcell" data-g="${id}" role="img" aria-label="${ch} · ${nm} ${L('（まだ）', '(not yet)')}">${glyphShadow(id)}</span>`;
   }
   $('g-grid').innerHTML = tiles;
-  $('g-grid').classList.toggle('gold', G.designDone(got, gsel));
+  $('g-grid').classList.toggle('gold', done);
+  $('g-grid').classList.toggle('swap', !!xmode);
 }
 // デザインの札に出す名前（札の見た目で。ネオンは NEON、墨は 墨、ドットは PIXEL）
 const GLYPH_TAB_NAME = { neon: 'NEON', ink: L('墨', 'INK'), pixel: 'PIXEL', gem: 'GEM', stitch: L('刺しゅう', 'STITCH') };
 
 function selectDesign(id) {
+  if (id !== gsel) xmode = null;
   gsel = id;
   if (!glyphs.seen.includes(id)) { glyphs.seen.push(id); saveGlyphs(); }
 }
 function openGlyphs() {
   loadGlyphSprites();
+  xmode = null;
   show('glyphs');
   selectDesign(G.pickDesign(glyphs.got, lastGlyph));
   renderGlyphs();
@@ -1421,35 +1444,72 @@ function zoomGlyph(id) {
 let drawing = false;
 function drawGlyph() {
   if (drawing) return;
-  const r = G.tryDraw(glyphs.got, coins.n, rnd01);
-  if (!r.ok || (r.cost > 0 && !coinSpend(r.cost))) { sfx.nope(); if (!G.allDone(glyphs.got)) coinShort(r.cost); return; }
+  const r = G.tryDraw(glyphs.got, coins.n, rnd01, gsel);
+  if (!r.ok || (r.cost > 0 && !coinSpend(r.cost))) { sfx.nope(); if (!G.designDone(glyphs.got, gsel)) coinShort(r.cost); return; }
   drawing = true;
-  glyphs.got.push(r.id); saveGlyphs();
+  const design = r.id.split(':')[0];
+  // だぶりは、そのデザインのかけら +1。どちらも押した瞬間に保存する
+  if (r.dupe) glyphs.shards = G.addShard(glyphs.shards, design); else glyphs.got.push(r.id);
+  saveGlyphs();
   lastGlyph = r.id;
   if (r.cost > 0) sfx.pay();
   $('g-live').textContent = '';
-  playReveal(r.id, r.cost > 0).then(() => {
+  playReveal(r.id, r.cost > 0, r.dupe).then(() => {
     drawing = false;
     const [d, c] = r.id.split(':');
-    $('g-live').textContent = `${G.glyphLabel(c)} · ${DESIGN_NAME[d] || d}${G.isRare(r.id) ? L(' ・ レア', ' · Rare') : ''}`;
+    $('g-live').textContent = `${G.glyphLabel(c)} · ${DESIGN_NAME[d] || d}${G.isRare(r.id) ? L(' ・ レア', ' · Rare') : ''}${r.dupe ? L(' ・ だぶり、かけら +1', ' · Duplicate, +1 shard') : ''}`;
   });
 }
 
+// かけらとの交換。伏せたタイルを押して選び、確認（✕ か ◇10）で手に入る
+function swapPick(id) {
+  if (!xmode) return;
+  sfx.tap();
+  xmode.sel = xmode.sel === id ? null : id;
+  renderGlyphs();
+}
+function swapGo() {
+  if (!xmode || !xmode.sel) return;
+  const r = G.exchange(glyphs.got, glyphs.shards, xmode.sel);
+  if (!r.ok) { xmode = null; sfx.nope(); return renderGlyphs(); }
+  const id = xmode.sel, rare = G.isRare(id);
+  glyphs.got = r.got; glyphs.shards = r.shards; saveGlyphs();
+  lastGlyph = id; xmode = null;
+  sfx[rare ? 'record' : 'reveal']();
+  renderGlyphs();
+  const cell = $('g-grid').querySelector(`[data-g="${id}"]`);
+  if (cell && !reduceMotion) cell.classList.add('fresh');
+  const [d, c] = id.split(':');
+  $('g-live').textContent = `${G.glyphLabel(c)} · ${DESIGN_NAME[d] || d}${rare ? L(' ・ レア', ' · Rare') : ''}`;
+  if (G.designDone(glyphs.got, d)) {
+    sfx.hit();
+    if (!reduceMotion) {
+      const els = [$('g-grid'), $('g-tabs').querySelector(`[data-d="${d}"]`)].filter(Boolean);
+      for (const el of els) el.classList.add('lap');
+      setTimeout(() => { for (const el of els) el.classList.remove('lap'); }, G.SET_LAP_MS);
+    }
+  }
+}
+
 // 演出は G.revealPlan の表どおりに流す。画面を押すと最後の形まで飛ばす（200 ms は受けない）
-async function playReveal(id, paid) {
+async function playReveal(id, paid, dupe) {
   const rare = G.isRare(id), design = id.split(':')[0];
   const plan = G.revealPlan(rare, reduceMotion);
-  pending = id;
+  // だぶりは品が増えないので影にしない。かけらの数だけ、しまう段まで古いままにする
+  if (dupe) pendingShard = design; else pending = id;
   renderGlyphs();
   const stage = $('g-stage');
 
   const finish = (quick) => {
     pending = null;
+    const hadShard = pendingShard === design;
+    pendingShard = null;
     selectDesign(design);
     renderGlyphs();
     stage.style.visibility = '';
     const cell = $('g-grid').querySelector(`[data-g="${id}"]`);
-    if (cell && !quick) cell.classList.add('fresh');
+    if (cell && !quick && !dupe) cell.classList.add('fresh');
+    if (hadShard && !quick && !reduceMotion) $('g-drawrow').querySelector('.gshard')?.classList.add('bump');
   };
 
   // 小さな端末で演出が作れないとき（animate がない）は表の音だけ
@@ -1479,6 +1539,12 @@ async function playReveal(id, paid) {
     if (shown) return; shown = true;
     back.style.display = 'none'; front.style.display = '';
     sfx[rare ? 'record' : 'reveal']();
+    if (dupe) {
+      const b = document.createElement('span');
+      b.className = 'gfx__dupe';
+      b.innerHTML = `${SHARD_SVG}<b>+1</b>`;
+      pos.appendChild(b);
+    }
   };
   const startedAt = Date.now();
   ov.addEventListener('pointerdown', (e) => {
@@ -1563,6 +1629,7 @@ async function playReveal(id, paid) {
         await wait(ms - 400);
       } else await wait(ms);
     } else if (step === 'f') {
+      pos.querySelector('.gfx__dupe')?.remove();
       dim(0.55);
       const cell = targetCell();
       stage.style.visibility = '';
@@ -1588,7 +1655,7 @@ async function playReveal(id, paid) {
   await new Promise((res) => setTimeout(res, 300));
   ov.remove();
   // デザインがそろったとき: 札と表の枠を金の光が 1 周し、`hit`（飛ばしたら印だけ）
-  if (G.designDone(glyphs.got, design) && !wasSkipped) {
+  if (!dupe && G.designDone(glyphs.got, design) && !wasSkipped) {
     const els = [$('g-grid'), $('g-tabs').querySelector(`[data-d="${design}"]`)].filter(Boolean);
     for (const el of els) el.classList.add('lap');
     sfx.hit();
@@ -1599,16 +1666,18 @@ async function playReveal(id, paid) {
 const later80 = (el) => setTimeout(() => el.classList.remove('flash'), 80);
 
 // 引くボタンの下の 1 行（次の 1 回でふつう・レアが出る確率。1 個あたりは「%」のシート）
-function oddsLine(got) {
-  const o = G.odds(got), wN = o.normal.n * G.W_NORMAL, wR = o.rare.n * G.W_RARE;
-  const pct = (w) => Math.round((w / (wN + wR)) * 1000) / 10;
-  const it = (cls, w, nm) => (w ? `<span class="godds__it" role="img" aria-label="${nm} ${pct(w)}%"><span class="odds__mark ${cls}" aria-hidden="true"></span>${pct(w)}%</span>` : '');
-  return `<span class="godds">${it('n', wN, L('ふつう', 'Normal'))}${it('r', wR, L('レア', 'Rare'))}</span>`;
+function oddsLine(design) {
+  const o = G.odds(design);
+  const it = (cls, v, nm) => `<span class="godds__it" role="img" aria-label="${nm} ${v.pct}%"><span class="odds__mark ${cls}" aria-hidden="true"></span>${v.pct}%</span>`;
+  return `<span class="godds">${it('n', o.normal, L('ふつう', 'Normal'))}${it('r', o.rare, L('レア', 'Rare'))}</span>`;
 }
+// 確率のシート: デザインごとに 1 個あたり。だぶり → かけら、かけら 10 個で交換
 function renderOdds() {
-  const o = G.odds(glyphs.got);
-  const row = (cls, v) => (v.n ? `<div class="odds__row"><span class="odds__mark ${cls}"></span><b>${v.pct}%</b><span>× ${v.n}</span></div>` : '');
-  $('odds-body').innerHTML = row('n', o.normal) + row('r', o.rare);
+  const o = G.odds(gsel);
+  const row = (cls, v) => `<div class="odds__row"><span class="odds__mark ${cls}"></span><b>${v.pct}%</b><span>× ${v.n}</span></div>`;
+  $('odds-body').innerHTML = row('n', o.normal) + row('r', o.rare)
+    + `<div class="odds__row odds__row--shard"><span class="odds__sym">${L('だぶり', 'Dupe')}</span><b>→ ${SHARD_SVG}1</b></div>`
+    + `<div class="odds__row odds__row--shard"><span class="odds__sym">${SHARD_SVG}${G.SHARD_COST}</span><b>→ 1</b><span>${L('好きな文字', 'any glyph')}</span></div>`;
 }
 
 function openZukan() {
@@ -1680,6 +1749,11 @@ $('g-odds').addEventListener('click', () => { sfx.tap(); renderOdds(); openSheet
 $('s-glyphs').addEventListener('click', (e) => {
   if (drawing) return;
   if (e.target.closest('#g-draw')) return drawGlyph();
+  if (e.target.closest('#g-swap')) { if (!canSwap(gsel)) return; sfx.tap(); xmode = { sel: null }; return renderGlyphs(); }
+  if (e.target.closest('#g-xno')) { sfx.tap(); xmode = null; return renderGlyphs(); }
+  if (e.target.closest('#g-xok')) return swapGo();
+  const x = e.target.closest('[data-x]');
+  if (x) return swapPick(x.dataset.x);
   const t = e.target.closest('.gtab');
   if (t) { sfx.move(); selectDesign(t.dataset.d); return renderGlyphs(); }
   const c = e.target.closest('button.gcell');
