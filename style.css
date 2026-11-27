@@ -1263,3 +1263,13 @@ code {
 
 /* ななめに流れる光の筋は線に見えるので出さない（2026-11-27 オーナー） */
 .gfx__slash, .gstage__tile::before, .gtab.gold::before, .gtab.gold.lap::before { display: none; }
+
+/* 広告なしのシート（iOS だけ） */
+#noads-btn[hidden] { display: none; }
+.noads { align-items: center; text-align: center; }
+.noads__icon { width: 56px; height: 56px; fill: none; stroke: var(--tx); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.noads__price { font-size: var(--fs-3); font-weight: 600; }
+.noads__body { margin: 0; color: var(--tx2); }
+.noads__status { min-height: 1.4em; font-size: var(--fs-1); color: var(--tx2); }
+.noads__status[data-kind="error"] { color: var(--tx); text-decoration: underline wavy; text-underline-offset: 3px; }
+.noads__note { margin: 0; font-size: var(--fs-1); color: var(--tx3); }

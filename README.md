@@ -29,6 +29,15 @@
 python3 -m http.server 8000   # → http://localhost:8000/
 ```
 
+## データ
+
+端末の中（localStorage）にだけ保存する。外へ送らない。キーはすべて `four-digits.` で始まる。
+
+- `best` `coins` `daily` `glyphs` `guard` `help` `milestones` `recent` `settings` `shop` `theme` `tut` `auto` `lang`: 遊んだ記録と設定
+- `ad`: 全画面広告の回の数え方（iOS 版）
+- `remind`: 毎日の通知の入・切（iOS 版）
+- `noads`: `'1'`（広告なしを買った）/ `'0'`。起動直後の見た目の控えで、買ったかどうかはストアが決める（iOS 版）
+
 ## 書体
 
 数字とラテン文字は [Jost](https://github.com/indestructible-type/Jost)（SIL Open Font License 1.1、`fonts/OFL.txt`）。`fonts/jost.woff2` は wght 400–800 の可変フォントを、ラテン・数字・使う記号だけに絞ったもの。日本語はシステムフォント。

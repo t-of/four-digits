@@ -55,6 +55,9 @@
           <button class="coin-chip" id="coin-chip" data-i18n-aria="coin" aria-label="コイン"><svg class="coin" viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="10.5" rx="8.5" ry="5.5"/><path d="M3.5 10.5v3c0 3 3.8 5.5 8.5 5.5s8.5-2.5 8.5-5.5v-3"/></svg><span id="coin-n">0</span></button>
           <div class="coin-band" id="coin-band" aria-hidden="true"><b id="coin-plus"></b><span id="coin-dots"></span></div>
         </div>
+        <button class="icon-btn" id="noads-btn" aria-label="広告をなくす" data-i18n-aria="noadsAria" hidden>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 17l3.7-9 3.7 9M3.9 13.8h4.6M13 8v9h2a4.5 4.5 0 000-9z"/><path d="M4 4l16 16"/></svg>
+        </button>
         <button class="icon-btn" id="theme-btn" aria-label="明るい配色にする">
           <svg viewBox="0 0 24 24" aria-hidden="true"><g class="sun"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/></g><path class="moon" d="M19 14.5A7.5 7.5 0 019.5 5a7.5 7.5 0 109.5 9.5z"/></svg>
         </button>
@@ -120,7 +123,7 @@
           <button class="pill" data-wak="share" data-i18n="share">共有</button>
           <span class="pill lang" id="lang-seg" role="group" aria-label="言語 / Language"><button type="button" data-v="ja" lang="ja">日本語</button><span aria-hidden="true">/</span><button type="button" data-v="en" lang="en">English</button></span>
         </div>
-        <div><a href="/">T.OF...</a> ・ <a href="https://t-of.github.io/contact/"><span data-i18n="contact">問い合わせ</span></a> ・ <span class="ver">v56</span></div>
+        <div><a href="/">T.OF...</a> ・ <a href="https://t-of.github.io/contact/"><span data-i18n="contact">問い合わせ</span></a> ・ <span class="ver">v57</span></div>
       </footer>
     </section>
 
@@ -329,6 +332,21 @@
         <div class="sheet__grip" data-close></div>
         <h2 data-i18n="oddsTitle">持っていないものだけ出る</h2>
         <div class="odds" id="odds-body"></div>
+      </div>
+    </div>
+
+    <!-- ========== シート（広告なし。iOS だけ） ========== -->
+    <div class="sheet" id="noads" hidden role="dialog" aria-modal="true" data-i18n-aria="noadsAria" aria-label="広告をなくす">
+      <div class="sheet__panel noads">
+        <div class="sheet__grip" data-close></div>
+        <svg class="noads__icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 17l3.7-9 3.7 9M3.9 13.8h4.6M13 8v9h2a4.5 4.5 0 000-9z"/><path d="M4 4l16 16"/></svg>
+        <div class="noads__price" id="noads-price" data-i18n="noadsPrice">¥500・1 回の買い切り</div>
+        <p class="noads__body" data-i18n="noadsBody">全画面の広告と、広告を見るボタンがなくなります。</p>
+        <button class="btn btn--primary" id="noads-buy" data-i18n="noadsBuy">購入（¥500）</button>
+        <button class="btn" id="noads-restore" data-i18n="noadsRestore">購入を復元</button>
+        <div class="noads__status" id="noads-status" role="status"></div>
+        <p class="noads__note" data-i18n="noadsNote">支払いは Apple の購入画面で行い、返金は Apple の決まりに従います。購入するとすぐに広告が消えます。</p>
+        <a class="privacy-link" href="https://t-of.github.io/privacy/" target="_blank" rel="noopener" data-i18n="privacy">プライバシーポリシー</a>
       </div>
     </div>
 

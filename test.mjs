@@ -395,3 +395,71 @@ test('通知: 提供元がなければボタンもベルも出ない', () => {
   assert.deepEqual(bellState({ available: true, asked: true, on: true, permission: 'denied' }), { hidden: false, pressed: false });
   assert.deepEqual(bellState({ available: true, asked: true, on: true, permission: 'granted' }), { hidden: false, pressed: true });
 });
+
+// ---- 広告なしの権利（src/entitlement.js）----
+{
+  const mem = {};
+  globalThis.localStorage = { getItem: (k) => (k in mem ? mem[k] : null), setItem: (k, v) => { mem[k] = String(v); } };
+  const Ent = await import('./src/entitlement.js');
+  const Rw = await import('./src/rewards.js');
+  const mk = (o = {}) => ({ price: async () => '¥500', check: async () => false, purchase: async () => 'purchased', restore: async () => false, ...o });
+  const fresh = () => { Ent._resetStore(); Ent._override(null); delete mem['four-digits.noads']; };
+
+  const run = async (name, fn) => { fresh(); await fn(); console.log('✓', name); };
+
+  await run('広告なし: ストアなし（Web 版）は広告が出る人ではなく、入口を出さない', () => {
+    assert.equal(Ent.hasStore(), false);
+    assert.equal(Ent.adsActive(), false);
+  });
+  await run('広告なし: ストアあり・未購入は adsActive。買えたら isFull・onChange 1 回・控え 1', async () => {
+    Ent.attachStore(mk());
+    assert.equal(Ent.adsActive(), true);
+    let n = 0, last = null;
+    Ent.onChange((f) => { n++; last = f; });
+    assert.equal(await Ent.purchase(), 'purchased');
+    assert.equal(Ent.isFull(), true);
+    assert.equal(n, 1); assert.equal(last, true);
+    assert.equal(mem['four-digits.noads'], '1');
+    assert.equal(Ent.adsActive(), false);
+  });
+  for (const r of ['cancelled', 'pending']) {
+    await run(`広告なし: ${r} は買っていないまま`, async () => {
+      Ent.attachStore(mk({ purchase: async () => r }));
+      assert.equal(await Ent.purchase(), r);
+      assert.equal(Ent.isFull(), false);
+      assert.equal(Ent.adsActive(), true);
+    });
+  }
+  await run('広告なし: ストアの答えが来たら控えを見ない。確かめに失敗したら今のまま', async () => {
+    mem['four-digits.noads'] = '1';
+    Ent.attachStore(mk({ check: async () => false }));
+    assert.equal(Ent.isFull(), true, '答えが来る前は控え');
+    await Ent.refreshFromStore();
+    assert.equal(Ent.isFull(), false);
+    fresh();
+    mem['four-digits.noads'] = '1';
+    Ent.attachStore(mk({ check: async () => { throw new Error('offline'); } }));
+    await Ent.refreshFromStore();
+    assert.equal(Ent.isFull(), true);
+  });
+  await run('広告なし: 返金で false になり onChange が呼ばれる', async () => {
+    let ok = true;
+    Ent.attachStore(mk({ check: async () => ok }));
+    await Ent.refreshFromStore();
+    assert.equal(Ent.isFull(), true);
+    const seen = [];
+    Ent.onChange((f) => seen.push(f));
+    ok = false;
+    await Ent.refreshFromStore();
+    assert.equal(Ent.isFull(), false);
+    assert.deepEqual(seen, [false]);
+  });
+  await run('広告なし: 買ったら Rewards.available() が false（守るの ▶ が出ない）', async () => {
+    Ent.attachStore(mk());
+    Ent.onChange((f) => { if (f) Rw.attach(null); });
+    Rw.attach({ show: async () => 'earned' });
+    assert.equal(Rw.available(), true);
+    await Ent.purchase();
+    assert.equal(Rw.available(), false);
+  });
+}

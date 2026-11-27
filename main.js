@@ -2,6 +2,7 @@ import { analyze, isTarget, starsFor, formatValue, display } from './src/expr.js
 import { sfx, setSound, unlockOnFirstTouch } from './src/sfx.js';
 import * as Rewards from './src/rewards.js';
 import * as Remind from './src/remind.js';
+import * as Ent from './src/entitlement.js';
 import * as G from './src/glyphs.js';
 import * as M from './src/milestones.js';
 import { dailyPuzzle } from './src/daily.js';
@@ -573,6 +574,17 @@ $('r-remind').addEventListener('click', async () => {
   replanRemind();
 });
 tableReady.then(replanRemind);
+
+// 広告なし（src/entitlement.js）。iOS で、ストアがつながっていて、まだ買っていないときだけ入口を出す
+function renderNoads() { $('noads-btn').hidden = !Ent.adsActive(); }
+Ent.onChange((full) => {
+  renderNoads();
+  if (!full) return;
+  Rewards.attach(null);   // 買ったら、ごほうび広告の口を外す（守るの ▶ が消える）
+  if (openSheetId === 'noads') { closeSheet(); sfx.star(2); }
+});
+$('noads-btn').addEventListener('click', () => { sfx.tap(); openSheet('noads'); });
+renderNoads();
 
 $('free-btn').addEventListener('click', () => { sfx.tap(); openFree(); });
 $('zukan-btn').addEventListener('click', () => { sfx.tap(); openZukan(); });
