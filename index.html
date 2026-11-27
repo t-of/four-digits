@@ -125,7 +125,7 @@
           <button class="pill" data-wak="share" data-i18n="share">共有</button>
           <span class="pill lang" id="lang-seg" role="group" aria-label="言語 / Language"><button type="button" data-v="ja" lang="ja">日本語</button><span aria-hidden="true">/</span><button type="button" data-v="en" lang="en">English</button></span>
         </div>
-        <div><a href="/">T.OF...</a> ・ <a href="https://t-of.github.io/contact/"><span data-i18n="contact">問い合わせ</span></a> ・ <span class="ver">v69</span></div>
+        <div><a href="/">T.OF...</a> ・ <a href="https://t-of.github.io/contact/"><span data-i18n="contact">問い合わせ</span></a> ・ <span class="ver">v70</span></div>
       </footer>
     </section>
 
@@ -315,6 +315,25 @@
           <dt>!<sup>N</sup></dt><dd data-i18n="howFactN"><code>9!⁽³⁾</code> = 9×6×3 = 162<br><small>N ずつ減らして掛ける（N 重階乗）。N がいくつでも 1 個</small></dd>
           <dt>!n</dt><dd data-i18n="howSub"><code>!0</code> = 1　<code>!3</code> = 2　<code>!4</code> = 9　<code>!5</code> = 44<br><small>n 人でプレゼントを交換して、だれも自分のを受け取らない分け方の数（部分階乗）</small></dd>
         </dl>
+        <button class="btn" id="help-intro" data-i18n="introAgain">はじめの説明をもう一度</button>
+      </div>
+    </div>
+
+    <!-- ========== はじめの説明（src/intro.js が中身を入れる） ========== -->
+    <div class="intro" id="intro" hidden role="dialog" aria-modal="true" aria-label="はじめの説明">
+      <div class="intro__panel">
+        <button class="intro__skip" id="intro-skip" type="button">スキップ</button>
+        <div class="intro__view" id="intro-view"></div>
+        <div class="intro__go">
+          <button class="btn btn--primary" id="intro-go" type="button" hidden></button>
+          <button class="btn" id="intro-later" type="button" hidden></button>
+        </div>
+        <div class="intro__nav">
+          <button class="intro__arrow" id="intro-prev" type="button">‹</button>
+          <span class="intro__dots" id="intro-dots" aria-hidden="true"></span>
+          <button class="intro__arrow" id="intro-next" type="button">›</button>
+        </div>
+        <p class="sr" id="intro-live" aria-live="polite"></p>
       </div>
     </div>
 

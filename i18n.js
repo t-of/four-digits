@@ -86,6 +86,7 @@ const I18n = (() => {
     noadsNote: 'Payment is made on Apple\'s purchase screen, and refunds follow Apple\'s rules. Ads are removed right away.',
     privacy: 'Privacy policy',
     howTitle: 'How to play',
+    introAgain: 'Show the intro again',
     howStep2: 'Insert symbols. Digits you don\'t separate stay joined.',
     howStep3: 'Fewer symbols, more ★',
     howParen: '<code>(2+2)×2</code> &nbsp;1 pair = 1 symbol',

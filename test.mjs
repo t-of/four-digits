@@ -720,3 +720,33 @@ test('splitDigits: ★ の多い順、★3 以下は一覧', () => {
   assert.deepEqual(r.cards.map((x) => x.d), ['0001', '0003']);
   assert.deepEqual(r.list.map((x) => x.d), ['0000', '0002']);
 });
+
+// ---- はじめの説明（src/intro.js） ----
+import * as Intro from './src/intro.js';
+test('intro: 保存は読めなくても「まだ見ていない」で始まる', () => {
+  const none = { v: 1, how: false, gacha: false };
+  for (const bad of [null, undefined, 'x', 3, {}, { v: 2, how: true }, []]) assert.deepEqual(Intro.parseIntro(bad), none);
+  assert.deepEqual(Intro.parseIntro({ v: 1, how: true, gacha: 'yes' }), { v: 1, how: true, gacha: false });
+  assert.deepEqual(Intro.parseIntro({ v: 1, how: true, gacha: true }), { v: 1, how: true, gacha: true });
+});
+test('intro: 遊び方は、はじめての人の 1 問目の前に 1 回だけ', () => {
+  const st = { v: 1, how: false, gacha: false };
+  assert.equal(Intro.howNow(null, 0, st), true);
+  assert.equal(Intro.howNow(null, 0, { ...st, how: true }), false);
+  assert.equal(Intro.howNow(1, 1, st), false);   // 2 問目
+  assert.equal(Intro.howNow(true, 9, st), false); // 今の人
+  assert.equal(Intro.howNow(2, 9, st), false);
+});
+test('intro: コインとガチャは、はじめの 2 問のあと（今の人も）、まだ引いていなければ 1 回だけ', () => {
+  const st = { v: 1, how: false, gacha: false };
+  assert.equal(Intro.gachaNow(2, 2, st, 0), true);     // はじめの 2 問が済んだ人
+  assert.equal(Intro.gachaNow(true, 20, st, 0), true); // 今の人
+  assert.equal(Intro.gachaNow(true, 20, st, 3), false); // もう引いた人
+  assert.equal(Intro.gachaNow(true, 20, { ...st, gacha: true }, 0), false);
+  assert.equal(Intro.gachaNow(null, 0, st, 0), false);  // 1 問目の前
+  assert.equal(Intro.gachaNow(1, 1, st, 0), false);     // 2 問目の前
+});
+test('intro: 枚数と、コインの数は今の定数から', () => {
+  assert.deepEqual([Intro.cardsFor('how').length, Intro.cardsFor('gacha').length, Intro.cardsFor('all').length], [2, 2, 4]);
+  assert.deepEqual(Intro.coinFacts(), { star3: [1, 3], login: 5, ms: [5, 50] });
+});

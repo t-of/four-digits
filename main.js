@@ -9,6 +9,7 @@ import { dailyPuzzle } from './src/daily.js';
 import { createAuto } from './src/auto.js';
 import * as E from './src/edit.js';
 import { TUTS, tutStep, tutOf } from './src/tut.js';
+import * as I from './src/intro.js';
 import { SIZE as TABLE_SIZE, mOf, tierOf, lvOfByte, parDots } from './src/puzzle.js';
 import { fetchAnswer, parseShown, shownAdd, star3Pays, toksOf } from './src/answers.js';
 import { numberGold, splitDigits } from './src/zukan.js';
@@ -152,6 +153,8 @@ const isShown = (digits, t) => shown.includes(`${digits}:${t}`);
 const A = createAuto({ load, save, starsOf, hasTable: () => !!minTable, infoOf, isShown });
 const auto = A.state;
 // はじめの 2 問（src/tut.js）。遊び方を読ませずに触って覚える
+let introSt = I.parseIntro(load('intro', null));
+const saveIntro = () => save('intro', introSt);
 const tutNow = () => tutStep(load('tut', false), totals().played);
 function ensureAuto() {
   if (!auto.cur) { const st = tutNow(); auto.cur = st ? [...TUTS[st - 1]] : A.pick(); A.save(); }
@@ -527,13 +530,17 @@ function showHome() {
   renderCoins();
   // はじめての日は最初の 1 問のあと、ホームに戻ったときに渡す
   const band = !tutNow() && claimLogin();
-  // 届いているのに渡していない節目は、ホームでまとめて渡す
+  // 届いているのに渡していない節目は、ホームでまとめて渡す。コインとガチャの説明は、帯が引いてから
   tableReady.then(() => setTimeout(() => {
     if (current !== 'home') return;
     const list = msDue();
-    if (!list.length) return;
-    const from = coins.n, gain = msPay(list);
-    showBand(from, gain, 0, '★3');
+    let wait = 0;
+    if (list.length) {
+      const from = coins.n, gain = msPay(list);
+      showBand(from, gain, 0, '★3');
+      wait = 2300;
+    }
+    setTimeout(openGachaIntro, wait);
   }, band ? 2300 : 0));
 }
 
@@ -1297,7 +1304,7 @@ function loadSprite(id) {
     if (reduceMotion) stripSmil(w);
     spriteBox.appendChild(w);
     spriteReady.add(id);
-    if (!spriteRaf) spriteRaf = requestAnimationFrame(() => { spriteRaf = 0; if (current === 'glyphs' && !drawing) renderGlyphs(); });
+    if (!spriteRaf) spriteRaf = requestAnimationFrame(() => { spriteRaf = 0; tour.refresh(); if (current === 'glyphs' && !drawing) renderGlyphs(); });
   }).catch(() => { spriteAsked.delete(id); /* なければ仮の描き方。次に開いたとき読み直す */ });
 }
 loadSprite('back');
@@ -1315,6 +1322,17 @@ function glyphTile(id) {
 }
 // 持っていない品の影（何の文字がまだかは分かる）
 const glyphShadow = (id) => `<span class="gt gt--shadow${G.isRare(id) ? ' rare' : ''}"><i>${G.glyphLabel(id.split(':')[1])}</i></span>`;
+
+// ---- はじめの説明（src/intro.js）。four-digits.intro = { v: 1, how, gacha } ----
+const tour = I.createIntro({ $, L, coinSvg: COIN_SVG, glyphTile, sfx, reduced: () => reduceMotion });
+// 出したら印をつける（途中で閉じても、読み直しても二度は出さない）
+function openGachaIntro() {
+  if (current !== 'home' || tour.isOpen() || !I.gachaNow(load('tut', false), totals().played, introSt, G.ownedCount(glyphs.got))) return;
+  introSt.gacha = true; saveIntro();
+  loadGlyphSprites();
+  tour.open('gacha', (r) => { if (r === 'go' && current === 'home') openGlyphs(); });
+}
+$('help-intro').addEventListener('click', () => { sfx.tap(); closeSheet(); loadGlyphSprites(); tour.open('all', () => openSheet('help')); });
 
 // ---- 文字のコーナー（s-glyphs）----
 // 選んでいるデザイン。開いたときに決める（保存しない）
@@ -1704,6 +1722,7 @@ document.addEventListener('keydown', (e) => {
   if (e.metaKey || e.ctrlKey || e.altKey) return;
   // ガチャの拡大・引く演出のあいだ: Esc は拡大だけ閉じる。演出中は画面を離れない（覆いがホームに残るため）
   if (current === 'glyphs' && (drawing || document.querySelector('.gzoom'))) { if (e.key === 'Escape') closeZoom(); return; }
+  if (tour.isOpen()) return;
   if (openSheetId) { if (e.key === 'Escape' || e.key === 'Enter') { e.preventDefault(); closeSheet(); } return; }
   if (current === 'puzzle') {
     if (!$('nsel').hidden) {
@@ -1734,5 +1753,9 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
-// はじめの 2 問が済むまでは、ホームを通さずはじめの問題へ
-if (tutNow()) { screens.home.hidden = true; tableReady.then(openAuto); } else showHome();
+// はじめの 2 問が済むまでは、ホームを通さずはじめの問題へ。はじめての人には、その前に遊び方を 2 枚見せる
+if (tutNow()) {
+  screens.home.hidden = true;
+  const start = () => tableReady.then(openAuto);
+  if (I.howNow(load('tut', false), totals().played, introSt)) { introSt.how = true; saveIntro(); tour.open('how', start); } else start();
+} else showHome();
