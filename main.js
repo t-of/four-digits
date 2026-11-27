@@ -496,7 +496,7 @@ async function openDaily() {
   digits = pad4(n);
   openPuzzle(t, 'daily');
 }
-$('daily-btn').addEventListener('click', () => { sfx.tap(); openDaily(); });
+$('daily-btn').addEventListener('click', () => { sfx.tap(); if (tutNow()) openAuto(); else openDaily(); });
 $('guard-btn').addEventListener('click', async () => {
   if (!guardable()) return;
   if (coins.n >= GUARD_COST) { if (!coinSpend(GUARD_COST)) return; }
