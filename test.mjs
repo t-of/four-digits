@@ -122,3 +122,82 @@ test('pickDesign', () => {
   assert.equal(pickDesign(neon, null), 'ink');
   assert.equal(pickDesign(ALL_ITEMS, null), 'neon');
 });
+
+// ---- 式の解析（src/expr.js）----
+import { readFileSync, existsSync } from 'node:fs';
+import { gunzipSync } from 'node:zlib';
+import { analyze, starsFor } from './src/expr.js';
+
+test('例の式 2,000 本: 値が目標・記号数が m と一致する', () => {
+  const f = new URL('./solver/results/examples.tsv.gz', import.meta.url);
+  if (!existsSync(f)) { console.log('  (examples.tsv.gz がないので飛ばす)'); return; }
+  const rows = gunzipSync(readFileSync(f)).toString().split('\n').filter(Boolean);
+  const step = Math.floor(rows.length / 2000);   // 行番号を固定（0, step, 2*step, …）
+  for (let i = 0; i < 2000; i++) {
+    const [d, t, m, expr] = rows[i * step].split('\t');
+    const r = analyze(expr, d);
+    const at = `行 ${i * step}: ${d} ${m} ${t} ${expr}`;
+    assert.equal(r.status, 'ok', `${at} status=${r.status} ${r.message ?? ''}`);
+    assert.equal(r.value.d === 1n && r.value.n, BigInt(t), `${at} 値`);
+    assert.equal(r.symbols, Number(m), `${at} 記号数 ${r.symbols}`);
+    assert.ok(r.complete, `${at} 数字を使い切っていない`);
+  }
+});
+
+test('手で書いた式', () => {
+  // [式, 4桁, 状態, 値(整数のとき), 記号数]
+  const ok = [
+    ['20+27', '2027', 47, 1],
+    ['(2+2)×2', '2222', 8, 3],
+    ['9!{3}', '9', 162, 1],
+    ['!4', '4', 9, 1],
+    ['−2^2', '22', -4, 2],
+    ['2^!3', '23', 4, 2],
+    ['(!2)^7', '27', 1, 3],
+    ['2^0^2', '202', 1, 2],
+    ['2^(−1)', '21', null, 3],
+    ['3!!', '3', 3, 1],
+    ['(3!)!', '3', 720, 3],
+    ['√9', '9', 3, 1],
+    ['0.2×5', '025', 1, 2],
+    ['2.0', '20', 2, 1],
+    ['20.27', '2027', null, 1],
+    ['3×(−2)', '32', -6, 3],
+  ];
+  for (const [e, d, v, k] of ok) {
+    const r = analyze(e, d);
+    assert.equal(r.status, 'ok', `${e}: ${r.status} ${r.message ?? ''}`);
+    if (v !== null) assert.ok(r.value.d === 1n && r.value.n === BigInt(v), `${e} の値 ${r.value.n}/${r.value.d}`);
+    assert.equal(r.symbols, k, `${e} の記号数`);
+  }
+  assert.equal(analyze('2^(−1)', '21').value.n, 1n);
+  assert.equal(analyze('2^(−1)', '21').value.d, 2n);
+  const bad = [
+    ['!2^7', '27', 'syntax'],
+    ['02', '02', 'syntax'],
+    ['.2', '2', 'syntax'],
+    ['√8', '8', 'math'],
+    ['−−2', '2', 'syntax'],
+    ['2(3)', '23', 'syntax'],
+    ['1÷0', '10', 'math'],
+    ['2+3', '32', 'digits'],
+  ];
+  for (const [e, d, st] of bad) {
+    const r = analyze(e, d);
+    assert.equal(r.status, st, `${e}: ${r.status} ${r.message ?? ''}`);
+  }
+  assert.equal(analyze('', '2027').status, 'empty');
+  assert.equal(analyze('2+', '27').status, 'incomplete');
+});
+
+test('starsFor', () => {
+  for (const m of [1, 5, 9]) {
+    assert.equal(starsFor(1, m), 3);
+    assert.equal(starsFor(m, m), 3);
+    assert.equal(starsFor(m + 1, m), 2);
+    assert.equal(starsFor(m + 2, m), 2);
+    assert.equal(starsFor(m + 3, m), 1);
+  }
+  assert.equal(starsFor(99, 255), 3);
+  assert.equal(starsFor(99, undefined), 3);
+});
