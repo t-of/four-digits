@@ -9,7 +9,7 @@ import { dailyPuzzle } from './src/daily.js';
 import { createAuto } from './src/auto.js';
 import * as E from './src/edit.js';
 import { TUTS, tutStep, tutOf } from './src/tut.js';
-import { SIZE as TABLE_SIZE, mOf, tierOf, lvOfByte } from './src/puzzle.js';
+import { SIZE as TABLE_SIZE, mOf, tierOf, lvOfByte, parDots } from './src/puzzle.js';
 import { NEED_SIZE, needOf, visibleKeys, learnedRow } from './src/levels.js';
 
 // 画面の言葉。L('日本語', 'English') で、起動時に決めた言語のほうを使う（i18n.js）
@@ -681,6 +681,7 @@ let digits = '0000';
 let mode = 'free';   // 'free' | 'auto' | 'daily'
 let target = 1, toks = [], cur = 0, solved = false, popAt = -1;
 let tut = 0;         // はじめの何問目の最中か（1 は + キーを光らせる。カーソルは 20|27 / 14|46 に置く。0 は通常）
+let parOn = true;       // 目標の下の ○ を出すか（はじめの 1 問と、2 問目の「もっと短く」までは出さない）
 let intro = null;       // 紹介の 1 問の最中なら INTRO の 1 件（最初の式を入れて新しいキーを光らせる）
 let locked = null;   // 「もっと短く」で戻ったときの式。同じ式のままでは解けた扱いにしない
 let timers = [];
@@ -696,6 +697,7 @@ function openPuzzle(t, md = 'free') {
   target = t;
   const st = tutNow();
   tut = md === 'auto' && tutOf(st, Number(digits), t) ? st : 0;
+  parOn = !tut;
   intro = md === 'auto' && !tut ? A.introOf() : null;
   if (intro && !(Number(intro.digits) === Number(digits) && intro.target === t)) intro = null;
   toks = [...(intro ? intro.start : digits)]; cur = intro ? intro.cursor : tut ? 2 : 1; popAt = -1;
@@ -714,6 +716,17 @@ function openPuzzle(t, md = 'free') {
   $('expr').classList.remove('won');
   showMine();
   update(true);
+}
+
+// 目標の下の ○。最短 m 個を左から塗る。超えたら右に +n。★3 で金
+function renderPar(k, gold = false) {
+  const el = $('par');
+  const m = minOf(digits, target);
+  if (!parOn || !(m < 255)) { el.innerHTML = ''; el.classList.remove('gold'); el.removeAttribute('aria-label'); return; }
+  const d = parDots(k, m);
+  el.innerHTML = Array.from({ length: m }, (_, i) => `<i class="${i < d.filled ? 'on' : ''}"></i>`).join('') + (d.over ? `<b>+${d.over}</b>` : '');
+  el.classList.toggle('gold', gold);
+  el.setAttribute('aria-label', L(`最短 ${m} ・ いま ${k}`, `Par ${m}, used ${k}`));
 }
 
 function showMine() {
@@ -791,7 +804,7 @@ function update(first = false) {
     val.classList.add('dim');
   }
   const k = a.symbols;
-  $('count').textContent = symN(k);
+  renderPar(k);
   if (!first && !solved && text() !== locked && a.status === 'ok' && a.complete && isTarget(a.value, target)) finish(k);
 }
 
@@ -837,7 +850,9 @@ function finish(k) {
 
   // 結果パネルの中身
   $('r-stars').innerHTML = [0, 1, 2].map((i) => `<span class="st ${i < got ? 'on' : 'off'}">★</span>`).join('');
-  $('r-text').textContent = got >= 3 || !(m < 255) ? symN(k) : `${symN(k)} ・ ${L('最短', 'min')} ${m}`;
+  renderPar(k, got >= 3);
+  $('r-text').textContent = symN(k);
+  $('r-text').hidden = parOn && m < 255;   // ○ が見えているときは k も m も ○ が伝える
   let sub = record ? L('最小を更新！', 'New best!') : '';
   const rs = $('r-sub');
   rs.textContent = sub;
@@ -1104,6 +1119,7 @@ $('r-next').addEventListener('click', () => {
 $('r-retry').addEventListener('click', () => {
   sfx.tap();
   locked = text(); solved = false;
+  parOn = true;   // 2 問目は「もっと短く」を押したときに初めて ○ が出る
   $('r-retry').classList.remove('hint');
   resetPad();
   $('expr').classList.remove('won');

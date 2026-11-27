@@ -630,3 +630,13 @@ test('learnedRow: ["ops","par"] は先頭 2 つが真・残り 7 つが偽。知
   assert.deepEqual(learnedRow(['ops', 'zzz']), [true, ...Array(8).fill(false)]);
   assert.equal(learnedRow(SEEN_IDS).filter(Boolean).length, 9);
 });
+
+// ---- 目標の下の ○（T6） ----
+import { parDots } from './src/puzzle.js';
+test('parDots: 塗る数・空の数・超えた数', () => {
+  assert.deepEqual(parDots(0, 3), { filled: 0, empty: 3, over: 0 });
+  assert.deepEqual(parDots(2, 3), { filled: 2, empty: 1, over: 0 });
+  assert.deepEqual(parDots(3, 3), { filled: 3, empty: 0, over: 0 });
+  assert.deepEqual(parDots(5, 3), { filled: 3, empty: 0, over: 2 });
+  assert.deepEqual(parDots(1, 19), { filled: 1, empty: 18, over: 0 });
+});

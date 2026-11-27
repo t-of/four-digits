@@ -13,3 +13,6 @@ export function lvFrom(tier, m) {
   return m <= 2 ? 3 : (m === 3 ? 4 : 5);
 }
 export const lvOfByte = (b) => lvFrom(tierOf(b), mOf(b));
+
+// 目標の下の ○。k = いまの記号の数、m = 最短。塗る数・空の数・超えた数
+export const parDots = (k, m) => ({ filled: Math.min(k, m), empty: Math.max(m - k, 0), over: Math.max(k - m, 0) });

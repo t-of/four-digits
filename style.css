@@ -483,7 +483,7 @@ code {
 }
 /* 縦は 3 つのかたまり: 目標（上 3 分の 1）／式→値（余白の中ほど）／記号の数・自分の式（下）。
    式の上下の auto が余白を等分して、式を視覚的な中心へ置く */
-.goal { display: flex; align-items: baseline; gap: 8px; margin-top: clamp(8px, 3vh, 32px); }
+.goal { display: flex; flex-direction: column; align-items: center; gap: 10px; margin-top: clamp(8px, 3vh, 32px); }
 .goal__num {
   font-size: var(--fs-hero);
   font-weight: 800;
@@ -574,14 +574,12 @@ code {
   min-height: 48px;
   text-align: center;
 }
-.count {
-  font-size: var(--fs-1);
-  color: var(--tx3);
-  font-feature-settings: "tnum";
-  padding: 0 8px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-}
+/* 目標の下の ○（最短の記号の数）。打つたびに左から白く塗る。超えたら +n（灰色）。★3 で金 */
+.par { display: flex; align-items: center; justify-content: center; gap: 4px; min-height: 10px; }
+.par i { width: 10px; height: 10px; box-sizing: border-box; border-radius: 50%; border: 1.5px solid var(--tx3); transition: background 0.15s, border-color 0.15s; }
+.par i.on { background: var(--tx); border-color: var(--tx); }
+.par.gold i.on { background: var(--gold); border-color: var(--gold); }
+.par b { margin-left: 4px; font-size: var(--fs-1); font-weight: 600; color: var(--tx3); font-feature-settings: "tnum"; line-height: 1; }
 .mine { font-size: var(--fs-1); color: var(--tx3); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* ---- キー ---- */
