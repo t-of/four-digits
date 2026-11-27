@@ -839,6 +839,13 @@ code {
 
 .cell.num small { height: auto; font-size: var(--fs-1); transform: scale(0.8); transform-origin: center top; color: var(--gold-tx); line-height: 1; min-height: 10px; }
 .cell.num.has { border-color: rgba(var(--gold-rgb), 0.35); }
+.cell.num.gold { background: var(--gold-dim); border-color: rgba(var(--gold-rgb), 0.6); }
+.cell.num.gold b { color: var(--gold-tx); }
+.zchips { display: flex; flex-wrap: wrap; gap: 6px; padding: 4px 0 8px; }
+.zchip { min-height: 32px; padding: 0 10px; border-radius: 8px; background: var(--s1); border: 1px solid var(--line); color: var(--tx2); font-size: var(--fs-1); font-feature-settings: "tnum"; letter-spacing: 0.04em; }
+.nmap { display: block; width: 100%; padding: 2px 0; }
+.nmap .map { width: 100%; max-width: 300px; margin: 0 auto; grid-template-columns: repeat(20, 1fr); }
+@media (max-height: 700px) { .home__cards { gap: 12px; } .nmap { padding: 0; } .nmap .map { grid-template-columns: repeat(50, 1fr); gap: 1px; } }
 .cell.num.has b { color: var(--tx); }
 
 .zhead { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }

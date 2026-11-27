@@ -700,3 +700,23 @@ test('pick: 答えを見た問題は返さない', () => {
   const A = createAuto({ load: (k, f) => mem[k] ?? f, save: (k, v) => { mem[k] = v; }, starsOf: () => 0, hasTable: () => false, isShown: (d, t) => t !== 7 });
   for (let i = 0; i < 50; i++) assert.equal(A.pick()[1], 7);
 });
+
+// 図鑑の数え方
+import { numberGold, splitDigits } from './src/zukan.js';
+test('numberGold: ★3 の式が 1 つでもある数だけ真', () => {
+  const minOf = (d, t) => (t === 45 ? 2 : 255);
+  // 45 は m=2: k=2 で ★3、k=5 で ★1。7 は m 不明（255）なので何でも ★3。9 は旧版の ★2
+  const best = {
+    '0123': { 45: [5, 'x'], 7: [3, 'x'], 9: [null, null, 2] },
+    '4567': { 45: [2, 'y'], 100: [null, null, 3] },
+  };
+  const g = numberGold(best, minOf);
+  assert.equal(g.length, 100);
+  assert.deepEqual([...g.keys()].filter((i) => g[i]).map((i) => i + 1), [7, 45, 100]);
+  assert.ok(numberGold({}, minOf).every((x) => x === false));
+});
+test('splitDigits: ★ の多い順、★3 以下は一覧', () => {
+  const r = splitDigits([{ d: '0002', stars: 2 }, { d: '0001', stars: 9 }, { d: '0003', stars: 4 }, { d: '0000', stars: 3 }]);
+  assert.deepEqual(r.cards.map((x) => x.d), ['0001', '0003']);
+  assert.deepEqual(r.list.map((x) => x.d), ['0000', '0002']);
+});

@@ -11,6 +11,7 @@ import * as E from './src/edit.js';
 import { TUTS, tutStep, tutOf } from './src/tut.js';
 import { SIZE as TABLE_SIZE, mOf, tierOf, lvOfByte, parDots } from './src/puzzle.js';
 import { fetchAnswer, parseShown, shownAdd, star3Pays, toksOf } from './src/answers.js';
+import { numberGold, splitDigits } from './src/zukan.js';
 import { NEED_SIZE, needOf, visibleKeys, learnedRow } from './src/levels.js';
 
 // 画面の言葉。L('日本語', 'English') で、起動時に決めた言語のほうを使う（i18n.js）
@@ -504,6 +505,9 @@ function renderHome() {
   renderDailyCard();
   const tt = totals();
   $('zukan-sub').textContent = tt.played ? `★ ${tt.stars}` : '';
+  const gold = minTable ? numberGold(best, minOf) : Array(100).fill(false);
+  $('nmap').innerHTML = gold.map((g) => `<i class="${g ? 'c3' : ''}"></i>`).join('');
+  $('nmap-btn').setAttribute('aria-label', L(`数 ${gold.filter(Boolean).length} / 100`, `Targets ${gold.filter(Boolean).length} / 100`));
   $('glyph-btn').classList.toggle('new', glyphsDot());
 }
 let tableTried = false;
@@ -625,6 +629,7 @@ renderNoads();
 
 $('free-btn').addEventListener('click', () => { sfx.tap(); openFree(); });
 $('zukan-btn').addEventListener('click', () => { sfx.tap(); openZukan(); });
+$('nmap-btn').addEventListener('click', () => { sfx.tap(); tab = 'numbers'; numPick = 0; openZukan(); });
 $('glyph-btn').addEventListener('click', () => { sfx.tap(); openGlyphs(); });
 function renderSound() {
   const b = $('sound-btn');
@@ -1251,7 +1256,7 @@ $('board-back').addEventListener('click', () => { sfx.tap(); if (boardFrom === '
 // =====================================================================
 // 図鑑
 // =====================================================================
-let tab = 'digits', numPick = 0;
+let tab = 'numbers', numPick = 0;
 const zbody = $('z-body');
 
 // ---- 文字のコレクション: four-digits.glyphs = { v: 1, got: ["neon:7", …], seen: ["neon", …] } ----
@@ -1547,16 +1552,18 @@ function openZukan() {
 }
 
 function renderDigitsTab() {
-  const ds = Object.keys(best).filter((d) => Object.keys(best[d]).length).sort();
+  const ds = Object.keys(best).filter((d) => Object.keys(best[d]).length);
   if (!ds.length) { zbody.innerHTML = `<div class="zempty">${L('まだ空っぽ', 'Nothing yet')}</div>`; return; }
+  const { cards: big, list } = splitDigits(ds.map((d) => ({ d, stars: starSum(d) })));
   let cards = '';
-  for (const d of ds) {
+  for (const { d } of big) {
     let n3 = 0;
     for (let t = 1; t <= 100; t++) if (starsOf(d, t) === 3) n3++;
     const gold = n3 === 100;
     cards += `<button class="zcard${gold ? ' gold' : ''}" data-n="${d}"><span class="zcard__head"><b>${d}</b><small>${gold ? L('制覇', 'Complete') : `★ ${starSum(d)}`}</small></span>${miniMap(d)}</button>`;
   }
-  zbody.innerHTML = `<div class="zcards">${cards}</div>`;
+  const chips = list.map(({ d }) => `<button class="zchip" data-n="${d}">${d}</button>`).join('');
+  zbody.innerHTML = (cards ? `<div class="zcards">${cards}</div>` : '') + (chips ? `<div class="zchips">${chips}</div>` : '');
 }
 
 function makersOf(t) {
@@ -1567,11 +1574,12 @@ function makersOf(t) {
 
 function renderNumbersTab() {
   let cells = '';
+  const gold = numberGold(best, minOf);
   for (let t = 1; t <= 100; t++) {
     const c = makersOf(t).length;
-    cells += `<button class="cell num${c ? ' has' : ''}" data-t="${t}"><b>${t}</b><small>${c || ''}</small></button>`;
+    cells += `<button class="cell num${c ? ' has' : ''}${gold[t - 1] ? ' gold' : ''}" data-t="${t}"><b>${t}</b><small>${c || ''}</small></button>`;
   }
-  zbody.innerHTML = `<p class="zlead">${L('その数を、何種類の 4 桁から作ったか', 'How many 4-digit sets made each number')}</p><div class="grid100">${cells}</div>`;
+  zbody.innerHTML = `<div class="grid100">${cells}</div>`;
 }
 
 function renderNumberDetail() {
