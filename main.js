@@ -1266,7 +1266,7 @@ const saveGlyphs = () => save('glyphs', glyphs);
 // 見たことのないデザインがあれば「新しい」の印（金の点）。コーナーでそのデザインを選んだら seen に足して消す
 const glyphsNew = () => G.GLYPH_DESIGNS.some((d) => !glyphs.seen.includes(d.id));
 const rnd01 = () => { try { return crypto.getRandomValues(new Uint32Array(1))[0] / 4294967296; } catch { return Math.random(); } };
-const DESIGN_NAME = { neon: L('ネオン', 'Neon'), ink: L('墨', 'Ink'), pixel: L('ドット', 'Pixel') };
+const DESIGN_NAME = { neon: L('ネオン', 'Neon'), ink: L('墨', 'Ink'), pixel: L('ドット', 'Pixel'), gem: L('宝石', 'Gem'), stitch: L('刺しゅう', 'Stitch') };
 
 // 本物の絵（glyphs/<デザイン>.svg。<symbol id="neon-7"> の形）があれば使い、なければ仮の描き方（Jost ＋ 色の板）
 // 読めたデザインは document に差し込み、symbol が見つかったタイルだけ <use> にする
@@ -1334,7 +1334,7 @@ function renderGlyphs() {
   $('g-grid').classList.toggle('gold', G.designDone(got, gsel));
 }
 // デザインの札に出す名前（札の見た目で。ネオンは NEON、墨は 墨、ドットは PIXEL）
-const GLYPH_TAB_NAME = { neon: 'NEON', ink: L('墨', 'INK'), pixel: 'PIXEL' };
+const GLYPH_TAB_NAME = { neon: 'NEON', ink: L('墨', 'INK'), pixel: 'PIXEL', gem: 'GEM', stitch: L('刺しゅう', 'STITCH') };
 
 function selectDesign(id) {
   gsel = id;

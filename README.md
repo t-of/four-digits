@@ -46,3 +46,8 @@ python3 -m http.server 8000   # → http://localhost:8000/
 - `fonts/seg.woff2`: [DSEG7 Classic](https://github.com/keshikan/DSEG) Regular（OFL 1.1、`fonts/OFL-DSEG.txt`）。電卓の 7 セグメント。太さは 1 種類のみ。
 - `fonts/mono.woff2`: [IBM Plex Mono](https://github.com/IBM/plex) Medium 500（OFL 1.1、`fonts/OFL-IBMPlexMono.txt`）。活字の等幅。JetBrains Mono より字面が活字らしく、板の数字に合う。
 - `fonts/serif.woff2`: [Playfair Display](https://github.com/clauseggers/Playfair) の可変フォントを wght 600 に固定（OFL 1.1、`fonts/OFL-PlayfairDisplay.txt`）。銅版のセリフ。既定がオールドスタイル数字なので、`font-feature-settings: "lnum"`（ライニング）で使う。EB Garamond より 2 と 7 の太細の差がはっきりして読みやすい。
+
+## 文字のコレクションの絵
+
+`glyphs/<デザイン>.svg`（neon・ink・pixel・gem・stitch、伏せたタイルは back）。フォントは使わず、すべて自前の座標で描いている。
+作り直すときは本部の `tools/glyphs/<デザイン>.py` を `python3 tools/glyphs/<デザイン>.py` で流すと、ここに書き出される（手で svg を直さない）。

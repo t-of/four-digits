@@ -1186,6 +1186,10 @@ code {
 .gt--ink i { font-weight: 500; }
 .gt--pixel { background: #0f380f; color: #9bbc0f; box-shadow: inset 0 0 0 3px #306230; }
 .gt--pixel i { font-weight: 700; }
+.gt--gem { background: radial-gradient(circle at 35% 30%, #4a1d5e, #1c0a26); color: #ff6b8b; box-shadow: inset 0 0 0 1px #c9a24a; }
+.gt--gem.sign { color: #6be3c8; }
+.gt--stitch { background: #ede3cf; color: #b8322f; box-shadow: inset 0 0 0 2px #fff8, inset 0 0 0 3px #c9b994; }
+.gt--stitch.sign { color: #2c4a7a; }
 .gt--shadow { background: var(--s2); color: var(--tx3); opacity: 0.7; }
 .gt--shadow i { font-weight: 500; }
 .gt.rare::after { content: ""; position: absolute; top: 4px; right: 4px; width: 5px; height: 5px; border-radius: 50%; background: var(--gold); }
@@ -1248,6 +1252,8 @@ code {
 .gt-name--neon .gtab__name { color: #ff4fa3; text-shadow: 0 0 8px rgba(255, 79, 163, 0.6); }
 .gt-name--ink .gtab__name { font-family: "Hiragino Mincho ProN", "Yu Mincho", serif; font-weight: 600; }
 .gt-name--pixel .gtab__name { font-family: ui-monospace, Menlo, monospace; letter-spacing: 0.06em; }
+.gt-name--gem .gtab__name { color: #c45ad8; letter-spacing: 0.12em; }
+.gt-name--stitch .gtab__name { color: #b8322f; }
 .ggrid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; padding: 8px; border: 1px solid var(--line); border-radius: 14px; flex: none; }
 .ggrid.gold { border-color: rgba(var(--gold-rgb), 0.6); }
 .ggrid.lap { animation: glap 1.1s ease-out; }

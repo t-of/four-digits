@@ -7,6 +7,8 @@ export const GLYPH_DESIGNS = [
   { id: 'neon', rare: ['pow', 'sqrt', 'fact', 'dot'] },
   { id: 'ink', rare: ['pow', 'sqrt', 'fact', 'dot'] },
   { id: 'pixel', rare: ['pow', 'sqrt', 'fact', 'dot'] },
+  { id: 'gem', rare: ['pow', 'sqrt', 'fact', 'dot'] },
+  { id: 'stitch', rare: ['pow', 'sqrt', 'fact', 'dot'] },
 ];
 // 画面に出す 1 文字
 export const GLYPH_LABEL = { add: '+', sub: '−', mul: '×', div: '÷', lp: '(', rp: ')', pow: '^', sqrt: '√', fact: '!', dot: '.' };
