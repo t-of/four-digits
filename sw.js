@@ -9,7 +9,7 @@
 // ブラウザの HTTP キャッシュを通さない（install は reload、fetch は no-cache）。古い main.js と新しい index.html が混ざって動かなくなるのを防ぐ。
 
 const PREFIX = 'four-digits-';
-const VERSION = 'v64';
+const VERSION = 'v65';
 const CACHE = `${PREFIX}${VERSION}`;
 const FONT_CACHE = `${PREFIX}fonts`;
 // 答えのデータ（data/ans/）は版で消えない別のキャッシュ（cache-first）。パスしたときだけ読む。SHELL には入れない。
