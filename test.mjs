@@ -640,3 +640,24 @@ test('parDots: 塗る数・空の数・超えた数', () => {
   assert.deepEqual(parDots(5, 3), { filled: 3, empty: 0, over: 2 });
   assert.deepEqual(parDots(1, 19), { filled: 1, empty: 18, over: 0 });
 });
+
+// ---- パスのあとの答え（T7。data/ans/、作り方は solver/src/make_answers.py。全 100 万本の照合は solver/src/verify_answers.mjs） ----
+import { needOfExpr } from './src/answers.js';
+import { isTarget } from './src/expr.js';
+if (!existsSync(new URL('./data/ans/00.txt.gz', import.meta.url))) console.log('- data/ans/ が無いので答えのテストは飛ばす');
+else {
+  test('答え: 決まった 2,000 問で、値が目標・記号数が m・need が need.bin と一致', () => {
+    const files = {};
+    for (let k = 0; k < 2000; k++) {
+      const i = k * 499 + 137, h = Math.floor(i / 10000), j = i % 10000;
+      const lines = files[h] ||= gunzipSync(readFileSync(new URL(`./data/ans/${String(h).padStart(2, '0')}.txt.gz`, import.meta.url))).toString('utf8').split('\n');
+      assert.equal(lines.length, 10001);
+      const digits = String(Math.floor(i / 100)).padStart(4, '0'), t = (i % 100) + 1, e = lines[j];
+      const r = an2(e, digits);
+      assert.equal(r.status, 'ok', `${digits} ${t} ${e}`); assert.ok(r.complete);
+      assert.ok(isTarget(r.value, t), `${digits} ${t} ${e}`);
+      assert.equal(r.symbols, mOf(tbl[i]), `${digits} ${t} ${e}`);
+      assert.equal(needOfExpr(e), needOf(needTbl, i), `${digits} ${t} ${e}`);
+    }
+  });
+}
