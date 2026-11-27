@@ -1253,3 +1253,6 @@ code {
 .gzoom .gt { border-radius: 16px; }
 .gzoom .gt i { font-size: calc(var(--gz) * 0.5); }
 @media (prefers-reduced-motion: reduce) { .gstage__tile::before, .gtab.gold::before { animation: none; display: none; } .ggrid.lap, .gtab.lap, .gcell.fresh { animation: none; } }
+
+/* ななめに流れる光の筋は線に見えるので出さない（2026-11-27 オーナー） */
+.gfx__slash, .gstage__tile::before, .gtab.gold::before, .gtab.gold.lap::before { display: none; }
