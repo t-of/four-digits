@@ -813,8 +813,8 @@ function finish(k) {
       if (i === 2 && record) later(() => sfx.record(), 180);
     }, 160 + i * 220));
     const t0 = 160 + 2 * 220 + 200 + (record ? 180 : 0);
-    if (reward) later(() => showReward(reward, coins.n - mgain), t0);
-    let acc = coins.n - mgain + reward;
+    if (reward) later(() => showReward(reward, coins.n - mgain - reward), t0);
+    let acc = coins.n - mgain;
     [...rms.children].forEach((card, i) => {
       const from = acc; acc += mdue[i].gain;
       later(() => {
