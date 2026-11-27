@@ -242,7 +242,7 @@ function renderShop() {
   $('shop-n').textContent = coins.n;
   // 文字の入口（一番下に 1 枚）。押すとコーナーへ
   const gAll = G.allDone(glyphs.got), gCost = G.drawCost(glyphs.got);
-  $('shop-glyph').innerHTML = `<button class="shopcard shopcard--glyph${glyphsNew() ? ' new' : ''}${!gAll && coins.n < gCost ? ' poor' : ''}" id="shop-glyph-go" aria-label="${L('文字', 'Glyphs')}">`
+  $('shop-glyph').innerHTML = `<button class="shopcard shopcard--glyph${glyphsNew() ? ' new' : ''}${!gAll && coins.n < gCost ? ' poor' : ''}" id="shop-glyph-go" aria-label="${L('ガチャ', 'Gacha')}">`
     + `<span class="gdraw__tile" aria-hidden="true"><svg viewBox="0 0 100 100"><use href="#back"/></svg></span>`
     + (gAll ? `<span class="gcount gold">${G.ownedCount(glyphs.got)}/${G.ALL_ITEMS.length}</span>` : `<span class="shopcard__price">${COIN_SVG}${gCost}</span>`)
     + '</button>';

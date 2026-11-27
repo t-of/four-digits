@@ -75,7 +75,7 @@ const I18n = (() => {
     del1: 'Delete one digit',
     tabDigits: '4 digits',
     tabNumbers: 'Targets',
-    glyphs: 'Glyphs',
+    glyphs: 'Gacha',
     oddsTitle: "Only ones you don't have",
     odds: 'Odds',
     noadsAria: 'Remove ads',
