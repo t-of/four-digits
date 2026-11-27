@@ -97,7 +97,7 @@
             <span class="daily__meta" id="daily-meta"></span>
           </span>
         </button>
-        <button class="guard" id="guard-btn" hidden><svg class="coin" viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="10.5" rx="8.5" ry="5.5"/><path d="M3.5 10.5v3c0 3 3.8 5.5 8.5 5.5s8.5-2.5 8.5-5.5v-3"/></svg>30 で守る</button>
+        <button class="guard" id="guard-btn" hidden><svg class="coin" viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="10.5" rx="8.5" ry="5.5"/><path d="M3.5 10.5v3c0 3 3.8 5.5 8.5 5.5s8.5-2.5 8.5-5.5v-3"/></svg>30 でつなぐ</button>
         </div>
 
         <div class="card-trio">
@@ -125,7 +125,7 @@
           <button class="pill" data-wak="share" data-i18n="share">共有</button>
           <span class="pill lang" id="lang-seg" role="group" aria-label="言語 / Language"><button type="button" data-v="ja" lang="ja">日本語</button><span aria-hidden="true">/</span><button type="button" data-v="en" lang="en">English</button></span>
         </div>
-        <div><a href="/">T.OF...</a> ・ <a href="https://t-of.github.io/contact/"><span data-i18n="contact">問い合わせ</span></a> ・ <span class="ver">v68</span></div>
+        <div><a href="/">T.OF...</a> ・ <a href="https://t-of.github.io/contact/"><span data-i18n="contact">問い合わせ</span></a> ・ <span class="ver">v69</span></div>
       </footer>
     </section>
 
@@ -290,8 +290,9 @@
       </header>
       <div class="gstage"><span class="gstage__tile" id="g-stage" aria-hidden="true"><svg viewBox="0 0 100 100"><use href="#back"/></svg></span></div>
       <div class="gdrawrow" id="g-drawrow"></div>
-      <div class="gtabs" id="g-tabs" role="tablist"></div>
+      <div class="gtabs" id="g-tabs" role="group" data-i18n-aria="glyphs" aria-label="ガチャ"></div>
       <div class="ggrid" id="g-grid"></div>
+      <p class="sr" id="g-live" aria-live="polite"></p>
     </section>
 
     <!-- ========== シート（遊び方） ========== -->
