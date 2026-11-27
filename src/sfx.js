@@ -77,6 +77,8 @@ export const sfx = {
   coin() { tone(2093, 0.07, { type: 'sine', gain: 0.03 }); tone(2794, 0.09, { type: 'sine', gain: 0.025, at: 0.07 }); },
   // コインを払った（柔らかい低めの 1 音）
   pay() { tone(260, 0.09, { type: 'sine', gain: 0.05, to: 200 }); },
+  // 節目のコイン（鐘 2 つを短く上へ。解けた鐘より小さい）
+  milestone() { bell(1319, 0, 0.04); bell(1760, 0.08, 0.035); },
   // 最小を更新
   record() { [1568, 1976, 2349, 3136].forEach((f, i) => bell(f, i * 0.07, 0.035)); },
 };

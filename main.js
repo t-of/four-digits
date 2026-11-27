@@ -2,6 +2,7 @@ import { analyze, isTarget, starsFor, formatValue, display } from './src/expr.js
 import { sfx, setSound, unlockOnFirstTouch } from './src/sfx.js';
 import * as Rewards from './src/rewards.js';
 import * as G from './src/glyphs.js';
+import * as M from './src/milestones.js';
 
 // 画面の言葉。L('日本語', 'English') で、起動時に決めた言語のほうを使う（i18n.js）
 const L = I18n.L;
@@ -191,6 +192,31 @@ function coinSpend(n) {
   coins.n -= n; saveCoins(); renderCoins();
   return true;
 }
+
+// 節目のコイン: four-digits.milestones = { v: 1, paid, wk }（src/milestones.js）。coins には足さない。
+// 渡すときは paid を先に保存してから coinAdd（途中で閉じても二重にならない）
+const ms = M.parseMilestones(load('milestones', null), coins);
+const saveMs = () => save('milestones', ms);
+if (load('milestones', null) === null) saveMs();
+// Lv ごとの ★3 の数 [0, Lv1, …, Lv5]。puzzle.bin が読めていなければ null（渡さない。あとでホームが拾う）
+function lvThreeCounts() {
+  if (!minTable) return null;
+  const c = [0, 0, 0, 0, 0, 0];
+  for (const d of Object.keys(best)) for (const t of Object.keys(best[d])) {
+    if (starsOfEntry(d, Number(t), best[d][t]) === 3) c[lvOf(Number(d), Number(t))]++;
+  }
+  return c;
+}
+function msDue() {
+  const lv = lvThreeCounts();
+  return lv ? M.due(ms, totals().three, lv) : [];
+}
+function msPay(list) {
+  const gain = list.reduce((s, x) => s + x.gain, 0);
+  ms.paid.push(...list.map((x) => x.id)); saveMs();
+  if (gain) coinAdd(gain);
+  return gain;
+}
 function renderCoins() { $('coin-n').textContent = coins.n; $('shop-n').textContent = coins.n; $('p-coin-n').textContent = coins.n; }
 
 // ショップ: four-digits.shop = { v: 1, owned: ["font-seg"], font: "font-seg" | null, pal: null }（null は標準）
@@ -277,23 +303,27 @@ const prevDay = (key) => { const [y, m, d] = key.split('-').map(Number); return 
 let bandTimer = 0;
 function claimLogin() {
   const today = dateKey(new Date());
-  if (coins.last && today <= coins.last) return;
+  if (coins.last && today <= coins.last) return false;
   coins.run = coins.last && prevDay(today) === coins.last ? coins.run + 1 : 1;
   coins.last = today;
-  const gain = coins.run % 7 === 0 ? 20 : Math.min(4 + coins.run, 10);
+  const wx = M.weekExtra(ms);
+  const gain = (coins.run % 7 === 0 ? 20 : Math.min(4 + coins.run, 10)) + wx.gain;
   const from = coins.n;
+  if (wx.gain) { ms.wk = wx.wk; saveMs(); }
   coins.n += gain; saveCoins();
   showBand(from, gain, (coins.run - 1) % 7 + 1);
+  return true;
 }
-function showBand(from, gain, day) {
+// tag があれば点の代わりに金の札（まとめ渡し）
+function showBand(from, gain, day, tag) {
   const band = $('coin-band');
   $('coin-plus').textContent = `+${gain}`;
   // 7 つ目の ● は金（＋20 の日）
-  $('coin-dots').innerHTML = '●'.repeat(Math.min(day, 6)) + '○'.repeat(6 - Math.min(day, 6))
+  $('coin-dots').innerHTML = tag ? `<i class="on">${tag}</i>` : '●'.repeat(Math.min(day, 6)) + '○'.repeat(6 - Math.min(day, 6))
     + `<i class="${day === 7 ? 'on' : ''}">${day === 7 ? '●' : '○'}</i>`;
   $('coin-n').textContent = from;
   band.classList.add('show');
-  sfx.coin();
+  if (tag) sfx.milestone(); else sfx.coin();
   let k = 0;
   const step = reduceMotion ? gain : 1;
   const t = setInterval(() => {
@@ -321,9 +351,8 @@ function star3Reward(isFirst, isDaily) {
   return gain;
 }
 // 星のあとに、結果の行から上のコイン表示へコインが飛んでいき、届くたびに残高が増える
-function showReward(gain) {
-  const from = coins.n - gain;
-  const rc = $('r-coin'), pc = $('p-coin');
+function showReward(gain, from = coins.n - gain, rc = $('r-coin')) {
+  const pc = $('p-coin');
   rc.classList.add('in');
   sfx.coin();
   const n = reduceMotion ? 1 : Math.min(gain, 10);
@@ -501,7 +530,16 @@ function showHome() {
   show('home');
   renderHome();
   renderCoins();
-  if (!needTut()) claimLogin();   // はじめての日は最初の 1 問のあと、ホームに戻ったときに渡す
+  // はじめての日は最初の 1 問のあと、ホームに戻ったときに渡す
+  const band = !needTut() && claimLogin();
+  // 届いているのに渡していない節目は、ホームでまとめて渡す
+  tableReady.then(() => setTimeout(() => {
+    if (current !== 'home') return;
+    const list = msDue();
+    if (!list.length) return;
+    const from = coins.n, gain = msPay(list);
+    showBand(from, gain, 0, '★3');
+  }, band ? 2300 : 0));
 }
 
 $('auto-btn').addEventListener('click', async () => { sfx.tap(); await tableReady; openAuto(); });
@@ -717,6 +755,8 @@ function finish(k) {
   const dailyBefore = daily[dailyDate] || 0;
   const bestStars = saveBest(digits, target, k, text());
   const reward = got >= 3 ? star3Reward(before < 3, mode === 'daily' && dailyBefore < 3) : 0;
+  const mdue = got >= 3 ? msDue() : [];
+  const mgain = mdue.length ? msPay(mdue) : 0;
   const record = m < 255 && k < m;
   sfx.hit(); buzz(12);
   renderExpr();
@@ -736,7 +776,10 @@ function finish(k) {
   $('r-retry').hidden = got >= 3;
   const rc = $('r-coin');
   rc.hidden = !reward; rc.classList.remove('in');
-  if (reward) { $('r-coin-n').textContent = `×${reward}`; $('p-coin-n').textContent = coins.n - reward; }
+  if (reward) $('r-coin-n').textContent = `×${reward}`;
+  if (reward || mgain) $('p-coin-n').textContent = coins.n - reward - mgain;
+  const rms = $('r-ms');
+  rms.innerHTML = mdue.map((x) => `<div class="result__ms" aria-label="${x.kind === 'l' ? `Lv ${x.n} ★3 ${M.LV_NEED}` : `★3 ${x.n}`} ×${x.gain}"><span>${x.kind === 'l' ? `Lv${x.n} ★3 ${M.LV_NEED}` : `★3 ${x.n}`}</span><b>${COIN_SVG}×${x.gain}</b></div>`).join('');
   $('r-share').hidden = mode !== 'daily';
   $('r-daily').hidden = mode !== 'daily';
   const next = $('r-next');
@@ -769,7 +812,16 @@ function finish(k) {
       if (i < got) sfx.star(i); else sfx.empty();
       if (i === 2 && record) later(() => sfx.record(), 180);
     }, 160 + i * 220));
-    if (reward) later(() => showReward(reward), 160 + 2 * 220 + 200 + (record ? 180 : 0));
+    const t0 = 160 + 2 * 220 + 200 + (record ? 180 : 0);
+    if (reward) later(() => showReward(reward, coins.n - mgain), t0);
+    let acc = coins.n - mgain + reward;
+    [...rms.children].forEach((card, i) => {
+      const from = acc; acc += mdue[i].gain;
+      later(() => {
+        card.classList.add('in'); sfx.milestone();
+        if (mdue[i].gain) later(() => showReward(mdue[i].gain, from, card), reduceMotion ? 0 : 400);
+      }, t0 + (reward ? 300 : 0) + i * 600);
+    });
   }, wait);
 }
 
