@@ -10,7 +10,7 @@ import { createAuto } from './src/auto.js';
 import * as E from './src/edit.js';
 import { TUTS, tutStep, tutOf } from './src/tut.js';
 import { SIZE as TABLE_SIZE, mOf, tierOf, lvOfByte } from './src/puzzle.js';
-import { NEED_SIZE, needOf, visibleKeys } from './src/levels.js';
+import { NEED_SIZE, needOf, visibleKeys, learnedRow } from './src/levels.js';
 
 // 画面の言葉。L('日本語', 'English') で、起動時に決めた言語のほうを使う（i18n.js）
 const L = I18n.L;
@@ -470,8 +470,27 @@ function renderDailyCard() {
   $('daily-btn').classList.toggle('is-done', s > 0);
 }
 
+// 覚えた記号の列。直前の描画より増えた 1 つだけ、薄い → 白へ（最初の描画は動かさない）
+const SYM_LABEL = ['+−×÷', '( )', 'xʸ', '√', '.', '!', '−x', '!ᴺ', '!x'];
+let learnedShown = null;
+function renderLearned() {
+  const row = learnedRow(auto.seen);
+  const n = row.filter(Boolean).length;
+  const el = $('auto-lv');
+  el.setAttribute('aria-label', L(`覚えた記号 ${n} / 9`, `Symbols ${n} / 9`));
+  el.innerHTML = row.map((on, k) => `<i class="${on ? 'on' : ''}" data-k="${k}">${SYM_LABEL[k]}</i>`).join('');
+  if (learnedShown && !reduceMotion) {
+    row.forEach((on, k) => {
+      if (!on || learnedShown[k]) return;
+      const it = el.children[k];
+      it.classList.remove('on');
+      requestAnimationFrame(() => requestAnimationFrame(() => it.classList.add('on')));
+    });
+  }
+  learnedShown = row;
+}
 function renderHome() {
-  $('auto-lv').innerHTML = Array.from({ length: 10 }, (_, k) => `<i class="${k < auto.S ? 'on' : ''}"></i>`).join('') + `<em>Lv ${auto.S}</em>`;
+  renderLearned();
   if (minTable || tableTried) {
     const [n, t] = ensureAuto();
     $('auto-digits').textContent = pad4(n);

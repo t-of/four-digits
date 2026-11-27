@@ -622,3 +622,11 @@ test('キーの見え方: おまかせは seen だけ、今日の 1 問・フリ
   assert.deepEqual(visibleKeys('auto', ['ops'], 1), all);
   assert.deepEqual(visibleKeys('free', ['ops']), all);
 });
+
+// ---- ホームの覚えた記号の列（T5） ----
+import { learnedRow } from './src/levels.js';
+test('learnedRow: ["ops","par"] は先頭 2 つが真・残り 7 つが偽。知らない id は無視', () => {
+  assert.deepEqual(learnedRow(['ops', 'par']), [true, true, false, false, false, false, false, false, false]);
+  assert.deepEqual(learnedRow(['ops', 'zzz']), [true, ...Array(8).fill(false)]);
+  assert.equal(learnedRow(SEEN_IDS).filter(Boolean).length, 9);
+});

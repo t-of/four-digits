@@ -50,3 +50,5 @@ export function visibleKeys(mode, seen, all) {
 export const introKeyOf = (S) => INTRO.find((x) => x.S === S)?.key || null;
 // その S までに紹介する記号の seen の id を全部（引き継ぎ用）
 export const seenUpTo = (S) => ['ops', ...INTRO.filter((x) => x.S <= S).map((x) => x.key)];
+// ホームの「覚えた記号」の列（2-6）。SEEN_IDS と同じ順に、覚えたかどうか
+export const learnedRow = (seen) => SEEN_IDS.map((id) => id === 'ops' || (seen || []).includes(id));

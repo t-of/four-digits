@@ -413,10 +413,10 @@ code {
     var(--s1);
   border-color: rgba(var(--gold-rgb), 0.35);
 }
-.lvmeter { display: flex; align-items: baseline; gap: 4px; }
-.lvmeter i { width: 8px; height: 6px; border-radius: 2px; background: var(--s3); }
-.lvmeter i.on { background: var(--gold); }
-.lvmeter em { font-style: normal; margin-left: 8px; font-size: var(--fs-1); color: var(--tx2); font-feature-settings: "tnum"; letter-spacing: var(--track-label); text-transform: none; }
+/* 覚えた記号の列。金は成功だけなので白（--tx）。まだのものは同じ形で薄く */
+.lvmeter { display: flex; align-items: baseline; gap: 10px; white-space: nowrap; }
+.lvmeter i { font-style: normal; font-size: var(--fs-2); font-weight: 600; color: var(--tx); opacity: 0.25; letter-spacing: 0; text-transform: none; transition: opacity 0.4s; }
+.lvmeter i.on { opacity: 1; }
 
 .preview {
   display: flex;
