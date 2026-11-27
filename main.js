@@ -1196,7 +1196,7 @@ async function playReveal(id, paid) {
   ov.style.setProperty('--gfx', `${S}px`);
   ov.innerHTML = '<div class="gfx__rays"></div><div class="gfx__pos"><div class="gfx__card' + '">'
     + '<div class="gfx__face gfx__back"><svg viewBox="0 0 100 100" aria-hidden="true"><use href="#back"/></svg></div>'
-    + `<div class="gfx__face gfx__front">${glyphTile(id)}</div><i class="gfx__slash"></i></div></div>`;
+    + `<div class="gfx__face gfx__front">${glyphTile(id)}</div><i class="gfx__clip"><i class="gfx__slash"></i></i></div></div>`;
   document.body.appendChild(ov);
   const pos = ov.querySelector('.gfx__pos'), card = ov.querySelector('.gfx__card');
   const back = ov.querySelector('.gfx__back'), front = ov.querySelector('.gfx__front');
