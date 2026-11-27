@@ -425,6 +425,7 @@ function untilTomorrow() {
 const screens = { home: $('s-home'), puzzle: $('s-puzzle'), free: $('s-free'), board: $('s-board'), zukan: $('s-zukan'), glyphs: $('s-glyphs') };
 let current = 'home';
 function show(name) {
+  document.querySelector('.gzoom')?.remove();
   for (const [k, el] of Object.entries(screens)) el.hidden = k !== name;
   const el = screens[name];
   if (current !== name && !reduceMotion) {
@@ -508,6 +509,9 @@ function renderHome() {
   const gold = minTable ? numberGold(best, minOf) : Array(100).fill(false);
   $('nmap').innerHTML = gold.map((g) => `<i class="${g ? 'c3' : ''}"></i>`).join('');
   $('nmap-btn').setAttribute('aria-label', L(`数 ${gold.filter(Boolean).length} / 100`, `Targets ${gold.filter(Boolean).length} / 100`));
+  $('nmap-n').textContent = `${gold.filter(Boolean).length} / 100`;
+  const gN = G.ownedCount(glyphs.got);
+  $('glyph-sub').textContent = gN ? `${gN}/${G.ALL_ITEMS.length}` : '';
   $('glyph-btn').classList.toggle('new', glyphsDot());
 }
 let tableTried = false;
@@ -1323,6 +1327,7 @@ function renderGlyphs() {
       + `<span class="gtab__name">${GLYPH_TAB_NAME[d.id] || nm}</span><b>${n}/${G.GLYPH_CHARS.length}</b></button>`;
   }).join('');
   $('g-tabs').innerHTML = tabs;
+  $('g-tabs').querySelector('.on')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
   let tiles = '';
   for (const c of G.GLYPH_CHARS) {
     const id = `${gsel}:${c}`, nm = DESIGN_NAME[gsel] || gsel, ch = G.glyphLabel(c);
@@ -1650,6 +1655,8 @@ for (const s of document.querySelectorAll('.sheet')) {
 const KEYMAP = { '+': '+', '-': '−', '*': '×', x: '×', '/': '÷', '^': '^', '(': '(', ')': ')', '.': '.', '!': '!', r: '√', s: '√' };
 document.addEventListener('keydown', (e) => {
   if (e.metaKey || e.ctrlKey || e.altKey) return;
+  // ガチャの拡大・引く演出のあいだ: Esc は拡大だけ閉じる。演出中は画面を離れない（覆いがホームに残るため）
+  if (current === 'glyphs' && (drawing || document.querySelector('.gzoom'))) { if (e.key === 'Escape') document.querySelector('.gzoom')?.remove(); return; }
   if (openSheetId) { if (e.key === 'Escape' || e.key === 'Enter') { e.preventDefault(); closeSheet(); } return; }
   if (current === 'puzzle') {
     if (!$('nsel').hidden) {
