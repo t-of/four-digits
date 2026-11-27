@@ -1,6 +1,7 @@
 // 文字のコレクションの中身のテスト。node test.mjs で走る（フレームワークなし）。
 import assert from 'node:assert/strict';
 import { insertTok, deleteSymbol, clearSymbols, moveBy, canDelete, isDigit } from './src/edit.js';
+import { createAuto } from './src/auto.js';
 import { ALL_ITEMS, GLYPH_CHARS, GLYPH_DESIGNS, tryDraw, drawCost, odds, ownedCount, designDone, allDone, parseGlyphs, revealPlan, pickDesign } from './src/glyphs.js';
 
 const test = (name, fn) => { fn(); console.log('✓', name); };
@@ -296,4 +297,46 @@ test('数字はどの操作でも消えず、順番も変わらない（1,000 �
     assert.deepEqual(st.toks.filter(isDigit), digits);
     assert.ok(st.cur >= 0 && st.cur <= st.toks.length);
   }
+});
+
+// ---- おまかせ（src/auto.js） ----
+const mkAuto = (L = 1, saved = null) => {
+  const store = {};
+  if (saved) store.auto = saved;
+  const A = createAuto({ load: (k, f) => (k in store ? store[k] : f), save: (k, v) => { store[k] = JSON.parse(JSON.stringify(v)); }, lvOf: () => 0, starsOf: () => 0, hasTable: () => false });
+  if (!saved) A.state.L = L;
+  return { A, store };
+};
+const play = (A, got) => { A.state.cur = [1234, 5]; return A.solved(got); };
+
+test('おまかせ: ★3 を 2 問続けると Lv+1', () => {
+  const { A } = mkAuto(2);
+  assert.equal(play(A, 3), 0); assert.equal(A.state.L, 2);
+  assert.equal(play(A, 3), 1); assert.equal(A.state.L, 3);
+  assert.equal(A.state.streak, 0);
+});
+test('おまかせ: ★1 で −1、★2 は変わらず連続が切れる', () => {
+  const { A } = mkAuto(3);
+  assert.equal(play(A, 1), -1); assert.equal(A.state.L, 2);
+  play(A, 3);
+  assert.equal(play(A, 2), 0); assert.equal(A.state.L, 2);
+  assert.equal(A.state.streak, 0);
+});
+test('おまかせ: Lv1 で下がらず、Lv5 で上がらない', () => {
+  const a = mkAuto(1).A;
+  assert.equal(play(a, 1), 0); assert.equal(a.state.L, 1);
+  const b = mkAuto(5).A;
+  play(b, 3); assert.equal(play(b, 3), 0); assert.equal(b.state.L, 5);
+});
+test('おまかせ: 保存の形は { v: 1, L, streak, recent, cur }', () => {
+  const { A, store } = mkAuto(2);
+  play(A, 3);
+  assert.deepEqual(Object.keys(store.auto), ['v', 'L', 'streak', 'recent', 'cur']);
+  assert.deepEqual(store.auto, { v: 1, L: 2, streak: 1, recent: [[1234, 5]], cur: null });
+  const again = mkAuto(1, store.auto).A.state;
+  assert.deepEqual([again.L, again.streak, again.recent], [2, 1, [[1234, 5]]]);
+});
+test('おまかせ: 「もっと短く」の 2 回目（cur なし）は数えない', () => {
+  const { A } = mkAuto(2);
+  assert.equal(A.solved(1), 0); assert.equal(A.state.L, 2);
 });

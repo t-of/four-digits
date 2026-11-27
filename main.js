@@ -4,6 +4,7 @@ import * as Rewards from './src/rewards.js';
 import * as G from './src/glyphs.js';
 import * as M from './src/milestones.js';
 import { dailyPuzzle } from './src/daily.js';
+import { createAuto } from './src/auto.js';
 import * as E from './src/edit.js';
 import { SIZE as TABLE_SIZE, mOf, lvOfByte } from './src/puzzle.js';
 
@@ -122,59 +123,16 @@ function totals() {
 }
 
 // =====================================================================
-// おまかせ: four-digits.auto = { v: 1, L, streak, recent: [[4桁, 目標], …], cur: [4桁, 目標] | null }
+// おまかせ（中身は src/auto.js）
 // =====================================================================
-const RECENT_DIGITS = 30, RECENT_TARGET = 5;
-let auto = { L: 1, streak: 0, recent: [], cur: null };
-{
-  const d = load('auto', null);
-  if (d && d.v === 1 && d.L >= 1 && d.L <= 5 && Array.isArray(d.recent)) {
-    auto = { L: d.L, streak: d.streak | 0, recent: d.recent.slice(0, RECENT_DIGITS), cur: Array.isArray(d.cur) ? d.cur : null };
-  }
-}
-const saveAuto = () => save('auto', { v: 1, ...auto });
-
-function pickAuto() {
-  const rd = auto.recent.slice(0, RECENT_DIGITS).map((r) => r[0]);
-  const rt = auto.recent.slice(0, RECENT_TARGET).map((r) => r[1]);
-  for (let tries = 0; tries < 5000; tries++) {
-    const i = Math.floor(Math.random() * 1000000);
-    const n = Math.floor(i / 100), t = (i % 100) + 1;
-    if (minTable && lvOf(n, t) !== auto.L) continue;
-    if (rd.includes(n) || rt.includes(t) || starsOf(pad4(n), t) >= 3) continue;
-    return [n, t];
-  }
-  return [Math.floor(Math.random() * 10000), 1 + Math.floor(Math.random() * 100)];
-}
+const A = createAuto({ load, save, lvOf, starsOf, hasTable: () => !!minTable });
+const auto = A.state;
 // はじめての人の最初の 1 問は、+ を 1 つ差し込めば解ける問題（20+27=47）。遊び方を読ませずに触って覚える
 const TUT = [2027, 47];
 const needTut = () => !load('tut', false) && totals().played === 0;
 function ensureAuto() {
-  if (!auto.cur) { auto.cur = needTut() ? TUT : pickAuto(); saveAuto(); }
+  if (!auto.cur) { auto.cur = needTut() ? TUT : A.pick(); A.save(); }
   return auto.cur;
-}
-function autoPush() {
-  auto.recent.unshift(auto.cur);
-  auto.recent.length = Math.min(auto.recent.length, RECENT_DIGITS);
-  auto.cur = null;
-}
-// 解けた: ★3 が 2 問続けば L+1、★1 なら L−1、★2 はそのまま（連続は切れる）。返すのは Lv の上下
-function autoSolved(got) {
-  if (!auto.cur) return 0;   // 「もっと短く」の 2 回目以降は数えない
-  const before = auto.L;
-  if (got >= 3) {
-    auto.streak++;
-    if (auto.streak >= 2) { auto.L = Math.min(5, auto.L + 1); auto.streak = 0; }
-  } else {
-    auto.streak = 0;
-    if (got <= 1) auto.L = Math.max(1, auto.L - 1);
-  }
-  autoPush(); saveAuto();
-  return auto.L - before;
-}
-function autoGiveUp() {
-  auto.L = Math.max(1, auto.L - 1); auto.streak = 0;
-  autoPush(); saveAuto();
 }
 
 // =====================================================================
@@ -772,7 +730,7 @@ function finish(k) {
   $('r-daily').hidden = mode !== 'daily';
   const next = $('r-next');
   if (mode === 'auto') {
-    const dl = autoSolved(got);
+    const dl = A.solved(got);
     next.textContent = L('次の 1 問', 'Next puzzle');
     if (dl) sub = [sub, `Lv ${auto.L} ${dl > 0 ? '↑' : '↓'}`].filter(Boolean).join(' ・ ');
     rs.textContent = sub;
@@ -956,8 +914,8 @@ function passReset() {
 function passDone(keep) {
   const was = auto.L;
   passReset();
-  if (keep) { auto.streak = 0; autoPush(); saveAuto(); sfx.pay(); }
-  else { sfx.del(); autoGiveUp(); }
+  if (keep) { auto.streak = 0; A.push(); A.save(); sfx.pay(); }
+  else { sfx.del(); A.giveUp(); }
   toast(keep ? L(`Lv ${was} のまま`, `Staying at Lv ${was}`) : auto.L === was ? L('パス', 'Pass') : `${L('パス', 'Pass')} ・ Lv ${was} → ${auto.L}`, 2400);
   openAuto();
 }
