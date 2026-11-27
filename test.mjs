@@ -1,6 +1,6 @@
 // 文字のコレクションの中身のテスト。node test.mjs で走る（フレームワークなし）。
 import assert from 'node:assert/strict';
-import { ALL_ITEMS, GLYPH_CHARS, GLYPH_DESIGNS, tryDraw, drawCost, odds, ownedCount, designDone, allDone, parseGlyphs } from './src/glyphs.js';
+import { ALL_ITEMS, GLYPH_CHARS, GLYPH_DESIGNS, tryDraw, drawCost, odds, ownedCount, designDone, allDone, parseGlyphs, revealPlan, pickDesign } from './src/glyphs.js';
 
 const test = (name, fn) => { fn(); console.log('✓', name); };
 
@@ -94,4 +94,31 @@ test('引き継ぎ: coins なし 0、run 3 → 3、run 12 → 7、保存済み�
   assert.equal(parseMilestones(null, { last: '2026-11-20', run: 12 }).wk, 7);
   const s = parseMilestones({ v: 1, paid: ['s1', 'x9'], wk: 2 }, { last: '2026-11-20', run: 12 });
   assert.deepEqual([s.wk, s.paid], [2, ['s1', 'x9']]);
+});
+
+// ---- 引く演出と文字のコーナー ----
+const planMs = (rare, reduced) => revealPlan(rare, reduced).reduce((s, x) => s + x.ms, 0);
+
+test('revealPlan: ふつう 2800・レア 3700、どちらも 2500〜4000', () => {
+  assert.equal(planMs(false, false), 2800);
+  assert.equal(planMs(true, false), 3700);
+  assert.ok(planMs(true, false) > planMs(false, false));
+  for (const r of [false, true]) { const t = planMs(r, false); assert.ok(t >= 2500 && t <= 4000); }
+});
+
+test('revealPlan: 動きを減らすと 1200・1600 で、a・b・c の段がない', () => {
+  assert.equal(planMs(false, true), 1200);
+  assert.equal(planMs(true, true), 1600);
+  for (const r of [false, true]) {
+    assert.ok(planMs(r, true) < 2000);
+    assert.ok(!revealPlan(r, true).some((x) => 'abc'.includes(x.step)));
+  }
+});
+
+test('pickDesign', () => {
+  assert.equal(pickDesign([], null), 'neon');
+  assert.equal(pickDesign(['neon:1'], 'ink:7'), 'ink');
+  const neon = ALL_ITEMS.filter((id) => id.startsWith('neon:'));
+  assert.equal(pickDesign(neon, null), 'ink');
+  assert.equal(pickDesign(ALL_ITEMS, null), 'neon');
 });

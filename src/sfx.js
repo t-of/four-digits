@@ -79,6 +79,18 @@ export const sfx = {
   pay() { tone(260, 0.09, { type: 'sine', gain: 0.05, to: 200 }); },
   // 節目のコイン（鐘 2 つを短く上へ。解けた鐘より小さい）
   milestone() { bell(1319, 0, 0.04); bell(1760, 0.08, 0.035); },
+  // 引く演出: ためるゆれ 1 回ごと（i = 0,1,2 で音が上がる）
+  charge(i) { tone([520, 620, 740][i] || 740, 0.04, { type: 'triangle', gain: 0.025 }); },
+  // 引く演出: 光る段（レアは高く長く、上に薄い三角波）
+  rise(rare) {
+    if (!rare) { tone(500, 0.35, { type: 'sine', gain: 0.02, to: 1000 }); return; }
+    tone(500, 0.6, { type: 'sine', gain: 0.02, to: 1600 });
+    tone(1000, 0.6, { type: 'triangle', gain: 0.015, to: 3200 });
+  },
+  // 引く演出: ふつうの品が表になった
+  reveal() { tone(1250, 0.045, { type: 'triangle', gain: 0.045 }); bell(1319, 0, 0.035); },
+  // 引く演出: レアの見せ場の追いの鐘
+  rareTail() { bell(2093, 0, 0.03); },
   // 最小を更新
   record() { [1568, 1976, 2349, 3136].forEach((f, i) => bell(f, i * 0.07, 0.035)); },
 };

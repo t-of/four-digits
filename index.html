@@ -94,7 +94,7 @@
         <button class="guard" id="guard-btn" hidden><svg class="coin" viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="10.5" rx="8.5" ry="5.5"/><path d="M3.5 10.5v3c0 3 3.8 5.5 8.5 5.5s8.5-2.5 8.5-5.5v-3"/></svg>30 で守る</button>
         </div>
 
-        <div class="card-pair">
+        <div class="card-trio">
           <button class="card card--mini" id="free-btn">
             <span class="card__label" data-i18n="free">フリー</span>
             
@@ -102,6 +102,10 @@
           <button class="card card--mini" id="zukan-btn">
             <span class="card__label" data-i18n="zukan">図鑑</span>
             <span class="card__sub" id="zukan-sub"></span>
+          </button>
+          <button class="card card--mini" id="glyph-btn">
+            <span class="card__label" data-i18n="glyphs">文字</span>
+            <span class="gicon" aria-hidden="true"><svg viewBox="0 0 100 100"><use href="#back"/></svg></span>
           </button>
         </div>
 
@@ -113,7 +117,7 @@
           <button class="pill" data-wak="share" data-i18n="share">共有</button>
           <span class="pill lang" id="lang-seg" role="group" aria-label="言語 / Language"><button type="button" data-v="ja" lang="ja">日本語</button><span aria-hidden="true">/</span><button type="button" data-v="en" lang="en">English</button></span>
         </div>
-        <div><a href="/">T.OF...</a> ・ <a href="https://t-of.github.io/contact/"><span data-i18n="contact">問い合わせ</span></a> ・ <span class="ver">v46</span></div>
+        <div><a href="/">T.OF...</a> ・ <a href="https://t-of.github.io/contact/"><span data-i18n="contact">問い合わせ</span></a> ・ <span class="ver">v47</span></div>
       </footer>
     </section>
 
@@ -262,9 +266,24 @@
       <div class="tabs" id="tabs" role="tablist">
         <button class="tab on" data-tab="digits" role="tab" data-i18n="tabDigits">4 桁</button>
         <button class="tab" data-tab="numbers" role="tab" data-i18n="tabNumbers">数</button>
-        <button class="tab" data-tab="glyphs" role="tab" data-i18n="tabGlyphs">文字</button>
       </div>
       <div class="zbody" id="z-body"></div>
+    </section>
+
+    <!-- ========== 文字のコーナー ========== -->
+    <section class="screen glyphs" id="s-glyphs" hidden data-i18n-aria="glyphs" aria-label="文字">
+      <header class="topbar topbar--glyphs">
+        <button class="icon-btn" id="glyphs-back" data-i18n-aria="back" aria-label="戻る">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
+        </button>
+        <span></span>
+        <div class="coin-chip" id="g-coin" data-i18n-aria="coin" aria-label="コイン"><svg class="coin" viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="10.5" rx="8.5" ry="5.5"/><path d="M3.5 10.5v3c0 3 3.8 5.5 8.5 5.5s8.5-2.5 8.5-5.5v-3"/></svg><span id="g-coin-n">0</span></div>
+        <button class="icon-btn gpct" id="g-odds" data-i18n-aria="odds" aria-label="確率">%</button>
+      </header>
+      <div class="gstage"><span class="gstage__tile" id="g-stage" aria-hidden="true"><svg viewBox="0 0 100 100"><use href="#back"/></svg></span></div>
+      <div class="gdrawrow" id="g-drawrow"></div>
+      <div class="gtabs" id="g-tabs" role="tablist"></div>
+      <div class="ggrid" id="g-grid"></div>
     </section>
 
     <!-- ========== シート（遊び方） ========== -->

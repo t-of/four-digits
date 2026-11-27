@@ -217,7 +217,7 @@ function msPay(list) {
   if (gain) coinAdd(gain);
   return gain;
 }
-function renderCoins() { $('coin-n').textContent = coins.n; $('shop-n').textContent = coins.n; $('p-coin-n').textContent = coins.n; }
+function renderCoins() { $('coin-n').textContent = coins.n; $('shop-n').textContent = coins.n; $('p-coin-n').textContent = coins.n; $('g-coin-n').textContent = coins.n; }
 
 // ショップ: four-digits.shop = { v: 1, owned: ["font-seg"], font: "font-seg" | null, pal: null }（null は標準）
 const FONT_IDS = ['font-seg', 'font-mono', 'font-serif'];
@@ -258,7 +258,7 @@ const SHOP_KINDS = {
 const PAL_EG = '<span class="shopcard__eg shopcard__eg--pal"><b>2</b><b>0</b><i>+</i><b>2</b><b>7</b></span>';
 function renderShop() {
   $('shop-n').textContent = coins.n;
-  // 文字の入口（一番下に 1 枚）。押すと図鑑の「文字」タブへ
+  // 文字の入口（一番下に 1 枚）。押すとコーナーへ
   const gAll = G.allDone(glyphs.got), gCost = G.drawCost(glyphs.got);
   $('shop-glyph').innerHTML = `<button class="shopcard shopcard--glyph${glyphsNew() ? ' new' : ''}${!gAll && coins.n < gCost ? ' poor' : ''}" id="shop-glyph-go" aria-label="${L('文字', 'Glyphs')}">`
     + `<span class="gdraw__tile" aria-hidden="true"><svg viewBox="0 0 100 100"><use href="#back"/></svg></span>`
@@ -293,7 +293,7 @@ for (const [kind, k] of Object.entries(SHOP_KINDS)) {
 }
 // ほかを押したら確認を戻す
 $('shop').addEventListener('click', (e) => {
-  if (e.target.closest('#shop-glyph-go')) { sfx.tap(); closeSheet(); tab = 'glyphs'; numPick = 0; return openZukan(); }
+  if (e.target.closest('#shop-glyph-go')) { sfx.tap(); closeSheet(); return openGlyphs(); }
   if (shopAsk && !e.target.closest(`[data-id="${shopAsk}"]`)) { shopAsk = null; renderShop(); }
 });
 applyFont();
@@ -373,11 +373,12 @@ function showReward(gain, from = coins.n - gain, rc = $('r-coin')) {
     }, reduceMotion ? 0 : 460);
   }, i * 80);
 }
-function flyCoin(a, b) {
+function flyCoin(a, b, z, ms = 460) {
   const el = document.createElement('div');
   el.className = 'coin-fly';
   el.innerHTML = COIN_SVG;
   el.style.left = `${a.left}px`; el.style.top = `${a.top}px`;
+  if (z) el.style.zIndex = z;
   document.body.appendChild(el);
   const dx = b.left - a.left, dy = b.top - a.top;
   const sx = (Math.random() - 0.5) * 70;
@@ -385,7 +386,7 @@ function flyCoin(a, b) {
     { transform: 'translate(0, 0) scale(0.6)', opacity: 0 },
     { transform: `translate(${sx}px, -26px) scale(1.2)`, opacity: 1, offset: 0.25 },
     { transform: `translate(${dx}px, ${dy}px) scale(0.85)`, opacity: 1 },
-  ], { duration: 460, easing: 'cubic-bezier(.45,0,.7,1)' }).onfinish = () => el.remove();
+  ], { duration: ms, easing: 'cubic-bezier(.45,0,.7,1)' }).onfinish = () => el.remove();
 }
 $('coin-chip').addEventListener('click', () => { sfx.tap(); shopAsk = null; renderShop(); openSheet('shop'); });
 
@@ -459,7 +460,7 @@ function untilTomorrow() {
 // =====================================================================
 // 画面の切り替え
 // =====================================================================
-const screens = { home: $('s-home'), puzzle: $('s-puzzle'), free: $('s-free'), board: $('s-board'), zukan: $('s-zukan') };
+const screens = { home: $('s-home'), puzzle: $('s-puzzle'), free: $('s-free'), board: $('s-board'), zukan: $('s-zukan'), glyphs: $('s-glyphs') };
 let current = 'home';
 function show(name) {
   for (const [k, el] of Object.entries(screens)) el.hidden = k !== name;
@@ -521,7 +522,7 @@ function renderHome() {
   renderDailyCard();
   const tt = totals();
   $('zukan-sub').textContent = tt.played ? `★ ${tt.stars}` : '';
-  $('zukan-btn').classList.toggle('new', glyphsNew());
+  $('glyph-btn').classList.toggle('new', glyphsDot());
 }
 let tableTried = false;
 tableReady.then(() => { tableTried = true; if (current === 'home') renderHome(); });
@@ -562,6 +563,7 @@ $('guard-btn').addEventListener('click', async () => {
 });
 $('free-btn').addEventListener('click', () => { sfx.tap(); openFree(); });
 $('zukan-btn').addEventListener('click', () => { sfx.tap(); openZukan(); });
+$('glyph-btn').addEventListener('click', () => { sfx.tap(); openGlyphs(); });
 function renderSound() {
   const b = $('sound-btn');
   b.setAttribute('aria-pressed', String(settings.sound));
@@ -1058,13 +1060,8 @@ const zbody = $('z-body');
 // 知らない id も消さずに残す（版を戻しても失わない）。seen は「新しい」の印用（まだ使わない）
 const glyphs = G.parseGlyphs(load('glyphs', null));
 const saveGlyphs = () => save('glyphs', glyphs);
-// 見たことのないデザインがあれば「新しい」の印（金の点）。「文字」タブを開いたら seen に足して消す
+// 見たことのないデザインがあれば「新しい」の印（金の点）。コーナーでそのデザインを選んだら seen に足して消す
 const glyphsNew = () => G.GLYPH_DESIGNS.some((d) => !glyphs.seen.includes(d.id));
-function markGlyphsSeen() {
-  if (!glyphsNew()) return;
-  for (const d of G.GLYPH_DESIGNS) if (!glyphs.seen.includes(d.id)) glyphs.seen.push(d.id);
-  saveGlyphs();
-}
 const rnd01 = () => { try { return crypto.getRandomValues(new Uint32Array(1))[0] / 4294967296; } catch { return Math.random(); } };
 const DESIGN_NAME = { neon: L('ネオン', 'Neon'), ink: L('墨', 'Ink'), pixel: L('ドット', 'Pixel') };
 
@@ -1084,7 +1081,7 @@ for (const d of [...G.GLYPH_DESIGNS, { id: 'back' }]) {
     if (reduceMotion) w.querySelectorAll('animate, animateTransform, animateMotion, set').forEach((a) => a.remove());
     spriteBox.appendChild(w);
     spriteReady.add(d.id);
-    if (current === 'zukan' && tab === 'glyphs') renderGlyphsTab();
+    if (current === 'glyphs' && !drawing) renderGlyphs();
   }).catch(() => { /* なければ仮の描き方 */ });
 }
 // タイル 1 枚の絵。品の id（"neon:7"）から作る。ここだけを差し替えればよい
@@ -1101,113 +1098,239 @@ function glyphTile(id) {
 // 持っていない品の影（何の文字がまだかは分かる）
 const glyphShadow = (id) => `<span class="gt gt--shadow${G.isRare(id) ? ' rare' : ''}"><i>${G.glyphLabel(id.split(':')[1])}</i></span>`;
 
-function renderGlyphsTab() {
-  const n = G.ownedCount(glyphs.got), total = G.ALL_ITEMS.length;
-  const owned = G.ownedSet(glyphs.got);
-  const done = G.allDone(glyphs.got);
-  const cost = G.drawCost(glyphs.got);
-  let html = '';
-  if (!done) {
-    html += `<div class="gdraw"><span class="gdraw__tile" aria-hidden="true"><svg viewBox="0 0 100 100"><use href="#back"/></svg></span>`
-      + `<button class="btn btn--primary${coins.n < cost ? ' poor' : ''}" id="g-draw" aria-label="${L('引く（コイン 25）', 'Draw (25 coins)')}">◎${cost}</button>`
-      + `<button class="gdraw__odds" id="g-odds" aria-label="${L('確率', 'Odds')}">%</button></div>`;
+// ---- 文字のコーナー（s-glyphs）----
+// 選んでいるデザイン。開いたときに決める（保存しない）
+let gsel = G.GLYPH_DESIGNS[0].id, lastGlyph = null;
+// 演出中は、引いた品をまだ影のまま見せる（しまう段で入れる）
+let pending = null;
+const gotView = () => (pending ? glyphs.got.filter((id) => id !== pending) : glyphs.got);
+const glyphsDot = () => glyphsNew() || (!G.allDone(glyphs.got) && G.drawCost(glyphs.got) === 0);
+const designCount = (got, d) => G.GLYPH_CHARS.filter((c) => G.ownedSet(got).has(`${d}:${c}`)).length;
+
+function renderGlyphs() {
+  const got = gotView(), owned = G.ownedSet(got), done = G.allDone(got), cost = G.drawCost(got);
+  $('g-stage').classList.toggle('done', done);
+  $('g-drawrow').innerHTML = done
+    ? `<span class="gcount gold" aria-label="${G.ALL_ITEMS.length}/${G.ALL_ITEMS.length}">${G.ownedCount(got)}/${G.ALL_ITEMS.length}</span>`
+    : `<button class="btn btn--primary${coins.n < cost ? ' poor' : ''}" id="g-draw" aria-label="${cost ? L('引く（コイン 25）', 'Draw (25 coins)') : L('引く（無料）', 'Draw (free)')}">◎${cost}</button>`;
+  const tabs = G.GLYPH_DESIGNS.map((d) => {
+    const n = designCount(got, d.id), full = n === G.GLYPH_CHARS.length;
+    const nm = DESIGN_NAME[d.id] || d.id;
+    return `<button class="gtab gt-name--${d.id}${d.id === gsel ? ' on' : ''}${full ? ' gold' : ''}${glyphs.seen.includes(d.id) ? '' : ' new'}" role="tab" aria-selected="${d.id === gsel}" data-d="${d.id}" aria-label="${nm} ${n}/${G.GLYPH_CHARS.length}">`
+      + `<span class="gtab__name">${GLYPH_TAB_NAME[d.id] || nm}</span><b>${n}/${G.GLYPH_CHARS.length}</b></button>`;
+  }).join('');
+  $('g-tabs').innerHTML = tabs;
+  let tiles = '';
+  for (const c of G.GLYPH_CHARS) {
+    const id = `${gsel}:${c}`, nm = DESIGN_NAME[gsel] || gsel, ch = G.glyphLabel(c);
+    tiles += owned.has(id)
+      ? `<button class="gcell" data-g="${id}" aria-label="${ch} · ${nm}">${glyphTile(id)}</button>`
+      : `<span class="gcell" data-g="${id}" role="img" aria-label="${ch} · ${nm} ${L('（まだ）', '(not yet)')}">${glyphShadow(id)}</span>`;
   }
-  html += `<div class="gcount${done ? ' gold' : ''}">${n}/${total}</div>`;
-  for (const d of G.GLYPH_DESIGNS) {
-    const full = G.designDone(glyphs.got, d.id);
-    let tiles = '';
-    for (const c of G.GLYPH_CHARS) {
-      const id = `${d.id}:${c}`;
-      tiles += `<span class="gcell" data-g="${id}">${owned.has(id) ? glyphTile(id) : glyphShadow(id)}</span>`;
-    }
-    html += `<section class="gset${full ? ' gold' : ''}"><h3 class="gset__name gt-name--${d.id}">${DESIGN_NAME[d.id] || d.id}</h3><div class="ggrid">${tiles}</div></section>`;
-  }
-  zbody.innerHTML = html;
+  $('g-grid').innerHTML = tiles;
+  $('g-grid').classList.toggle('gold', G.designDone(got, gsel));
+}
+// デザインの札に出す名前（札の見た目で。ネオンは NEON、墨は 墨、ドットは PIXEL）
+const GLYPH_TAB_NAME = { neon: 'NEON', ink: L('墨', 'INK'), pixel: 'PIXEL' };
+
+function selectDesign(id) {
+  gsel = id;
+  if (!glyphs.seen.includes(id)) { glyphs.seen.push(id); saveGlyphs(); }
+}
+function openGlyphs() {
+  show('glyphs');
+  selectDesign(G.pickDesign(glyphs.got, lastGlyph));
+  renderGlyphs();
+  $('g-stage').style.visibility = '';
 }
 
-// 引く演出。品はもう入っている（演出の途中で閉じても失わない）。画面を押すと最後まで飛ばす
+// 持っている品を大きく出す（もう一度押すか外を押すと閉じる）
+function zoomGlyph(id) {
+  sfx.tap();
+  const z = document.createElement('div');
+  z.className = 'gzoom';
+  z.style.setProperty('--gz', `${Math.round(Math.min(innerWidth * 0.6, innerHeight * 0.5, 280))}px`);
+  z.innerHTML = `<div class="gzoom__tile">${glyphTile(id)}</div>`;
+  z.addEventListener('pointerdown', () => { sfx.tap(); z.remove(); });
+  document.body.appendChild(z);
+}
+
+// 引く。品とコインは押した瞬間に保存してから演出を始める（演出の途中で閉じても失わない）
 let drawing = false;
 function drawGlyph() {
   if (drawing) return;
   const r = G.tryDraw(glyphs.got, coins.n, rnd01);
   if (!r.ok) { sfx.nope(); return; }
-  // コインを払うのと品を足すのを 1 つの流れで（払えなければ何も起きない）
   if (r.cost > 0 && !coinSpend(r.cost)) { sfx.nope(); return; }
   drawing = true;
   glyphs.got.push(r.id); saveGlyphs();
+  lastGlyph = r.id;
   if (r.cost > 0) sfx.pay();
-  playReveal(r.id).then(() => { drawing = false; });
+  playReveal(r.id, r.cost > 0).then(() => { drawing = false; });
 }
 
-async function playReveal(id) {
-  const rare = G.isRare(id);
-  const design = id.split(':')[0];
-  renderGlyphsTab();
-  const cell = zbody.querySelector(`[data-g="${id}"]`);
-  const set = cell && cell.closest('.gset');
-  const finish = () => {
-    if (cell) { cell.style.visibility = ''; cell.scrollIntoView({ block: 'nearest' }); cell.classList.add('fresh'); }
-    const dt = zbody.querySelector('.gdraw__tile'); if (dt) dt.style.visibility = '';
-    if (G.designDone(glyphs.got, design) && set) { set.classList.add('lap'); sfx.hit(); }
-  };
-  if (reduceMotion || !cell || !cell.animate) { sfx[rare ? 'record' : 'key'](); finish(); return; }
+// 演出は G.revealPlan の表どおりに流す。画面を押すと最後の形まで飛ばす（200 ms は受けない）
+async function playReveal(id, paid) {
+  const rare = G.isRare(id), design = id.split(':')[0];
+  const plan = G.revealPlan(rare, reduceMotion);
+  pending = id;
+  renderGlyphs();
+  const stage = $('g-stage');
 
-  // 大きく出す伏せたタイル。画面全体を覆い、押されたら飛ばす
-  const size = Math.round(Math.min(innerWidth * 0.6, innerHeight * 0.4, 240));
+  const finish = (quick) => {
+    pending = null;
+    selectDesign(design);
+    renderGlyphs();
+    stage.style.visibility = '';
+    const cell = $('g-grid').querySelector(`[data-g="${id}"]`);
+    if (cell && !quick) cell.classList.add('fresh');
+  };
+
+  // 小さな端末で演出が作れないとき（animate がない）は表の音だけ
+  if (!stage.animate) { sfx[rare ? 'record' : 'reveal'](); finish(true); return; }
+
+  const S = Math.round(Math.min(innerWidth * 0.6, innerHeight * 0.4, 240));
+  const sr = stage.getBoundingClientRect();
   const ov = document.createElement('div');
   ov.className = 'gfx';
-  ov.style.setProperty('--gfx', `${size}px`);
-  ov.innerHTML = `<div class="gfx__card${rare ? ' rare' : ''}"><div class="gfx__face gfx__back"><svg viewBox="0 0 100 100" aria-hidden="true"><use href="#back"/></svg></div>`
-    + `<div class="gfx__face gfx__front" hidden>${glyphTile(id)}</div>${rare ? '<i class="gfx__slash"></i>' : ''}</div>`;
+  ov.style.setProperty('--gfx', `${S}px`);
+  ov.innerHTML = '<div class="gfx__rays"></div><div class="gfx__pos"><div class="gfx__card' + '">'
+    + '<div class="gfx__face gfx__back"><svg viewBox="0 0 100 100" aria-hidden="true"><use href="#back"/></svg></div>'
+    + `<div class="gfx__face gfx__front">${glyphTile(id)}</div><i class="gfx__slash"></i></div></div>`;
   document.body.appendChild(ov);
-  const card = ov.firstChild, back = card.querySelector('.gfx__back'), front = card.querySelector('.gfx__front');
-  const slash = card.querySelector('.gfx__slash');
-  const dt = zbody.querySelector('.gdraw__tile'); if (dt) dt.style.visibility = 'hidden';
-  cell.style.visibility = 'hidden';
+  const pos = ov.querySelector('.gfx__pos'), card = ov.querySelector('.gfx__card');
+  const back = ov.querySelector('.gfx__back'), front = ov.querySelector('.gfx__front');
+  const slash = ov.querySelector('.gfx__slash'), rays = ov.querySelector('.gfx__rays');
+  front.style.display = 'none';
+  stage.style.visibility = 'hidden';
+  ov.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 120, fill: 'forwards' });
 
-  let skipped = false, revealed = false;
+  let skipped = false, shown = false, passedD = false;
   const live = new Set();
   const wait = (ms) => new Promise((res) => { const t = setTimeout(res, ms); live.add(() => { clearTimeout(t); res(); }); });
   const play = (el, kf, ms, opt = {}) => { const a = el.animate(kf, { duration: ms, fill: 'forwards', ...opt }); live.add(() => a.cancel()); return a.finished.catch(() => {}); };
-  const reveal = () => {
-    if (revealed) return; revealed = true;
-    back.hidden = true; front.hidden = false;
-    sfx[rare ? 'record' : 'key']();
+  const showFront = () => {
+    if (shown) return; shown = true;
+    back.style.display = 'none'; front.style.display = '';
+    sfx[rare ? 'record' : 'reveal']();
   };
-  const skip = (e) => {
-    if (skipped) return;
-    skipped = true; if (e) e.preventDefault();
-    reveal();
+  const startedAt = Date.now();
+  ov.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    if (skipped || Date.now() - startedAt < 200) return;
+    skipped = true;
+    // 裏返る前なら、表の音を 1 回だけ鳴らす
+    if (!passedD) showFront();
     for (const f of [...live]) f();
-  };
-  ov.addEventListener('pointerdown', skip);
+  });
 
-  await play(card, [{ transform: 'rotate(0)' }, { transform: 'rotate(-4deg)' }, { transform: 'rotate(4deg)' }, { transform: 'rotate(-3deg)' }, { transform: 'rotate(3deg)' }, { transform: 'rotate(0)' }], 250);
-  if (!skipped && rare) {
-    // 裏返る前の金の一閃（ロゴと同じ向き）
-    await play(slash, [{ transform: 'translateX(-130%)', opacity: 1 }, { transform: 'translateX(130%)', opacity: 1 }], 300);
-    slash.style.display = 'none';
+  const targetCell = () => { selectDesign(design); const c = $('g-grid').querySelector(`[data-g="${id}"]`); return c; };
+  const dim = (a) => { ov.style.background = `rgba(0,0,0,${a})`; };
+  dim(0.55);
+  // 中央の場所（pos は画面の中央に S×S で置いてある）
+  const toCenter = () => {
+    const pr = pos.getBoundingClientRect();
+    return { dx: sr.left + sr.width / 2 - (pr.left + pr.width / 2), dy: sr.top + sr.height / 2 - (pr.top + pr.height / 2), k: sr.width / pr.width };
+  };
+
+  for (const { step, ms } of plan) {
+    if (skipped) break;
+    if (step === 'a') {
+      const c = toCenter();
+      if (paid) {
+        const cb = $('g-coin').querySelector('.coin').getBoundingClientRect();
+        flyCoin(cb, { left: sr.left + sr.width / 2 - 10, top: sr.top + sr.height / 2 - 10 }, 1000, ms);
+      }
+      await play(pos, [{ transform: `translate(${c.dx}px, ${c.dy}px) scale(${c.k})` }, { transform: 'none' }], ms, { easing: 'ease-out' });
+    } else if (step === 'b') {
+      const per = ms / 3;
+      const rot = [2, 4, 6];
+      for (let i = 0; i < 3; i++) {
+        if (skipped) break;
+        sfx.charge(i);
+        const sc = 1 + 0.04 * ((i + 1) / 3);
+        if (rare && i === 2) { card.classList.add('flash'); later80(card); }
+        await play(card, [{ transform: 'rotate(0) scale(1)' }, { transform: `rotate(${-rot[i]}deg) scale(${sc})`, offset: 0.3 }, { transform: `rotate(${rot[i]}deg) scale(${sc})`, offset: 0.7 }, { transform: `rotate(0) scale(${1 + 0.04 * (i / 3)})` }], per);
+      }
+    } else if (step === 'c') {
+      sfx.rise(rare);
+      if (!rare) {
+        await play(card, [{ boxShadow: '0 0 0 0 rgba(255,255,255,0)' }, { boxShadow: '0 0 28px 8px rgba(255,255,255,0.75)' }], ms);
+      } else {
+        dim(0.7);
+        await play(slash, [{ transform: 'translateX(-130%) skewX(-16deg)', opacity: 1 }, { transform: 'translateX(130%) skewX(-16deg)', opacity: 1 }], 300);
+        slash.style.display = 'none';
+        if (skipped) break;
+        for (let i = 0; i < 8; i++) {
+          const dot = document.createElement('i');
+          dot.className = 'gfx__dot';
+          pos.appendChild(dot);
+          const ang = (i / 8) * Math.PI * 2, r0 = S * 0.52, r1 = S * 0.8;
+          play(dot, [{ transform: `translate(${Math.cos(ang) * r0}px, ${Math.sin(ang) * r0}px) scale(0.4)`, opacity: 0 }, { transform: `translate(${Math.cos(ang) * r1}px, ${Math.sin(ang) * r1}px) scale(1)`, opacity: 1, offset: 0.4 }, { transform: `translate(${Math.cos(ang) * r1}px, ${Math.sin(ang) * r1}px) scale(0.6)`, opacity: 0 }], 400);
+        }
+        await play(card, [{ boxShadow: '0 0 0 3px #d9a93b, 0 0 0 0 rgba(217,169,59,0)' }, { boxShadow: '0 0 0 3px #d9a93b, 0 0 36px 12px rgba(217,169,59,0.8)' }], ms - 300);
+      }
+    } else if (step === 'd') {
+      if (reduceMotion) {
+        showFront();
+        passedD = true;
+        front.style.opacity = '0';
+        await Promise.all([play(front, [{ opacity: 0 }, { opacity: 1 }], ms), play(back, [{ opacity: 1 }, { opacity: 0 }], ms)]);
+      } else {
+        const half = ms / 2;
+        await play(card, [{ transform: 'perspective(600px) rotateY(0)' }, { transform: 'perspective(600px) rotateY(90deg)' }], half, { easing: 'ease-in' });
+        if (skipped) break;
+        showFront();
+        passedD = true;
+        if (rare) card.classList.add('rare');
+        await play(card, rare
+          ? [{ transform: 'perspective(600px) rotateY(-90deg)' }, { transform: 'perspective(600px) rotateY(10deg)', offset: 0.7 }, { transform: 'perspective(600px) rotateY(0)' }]
+          : [{ transform: 'perspective(600px) rotateY(-90deg)' }, { transform: 'perspective(600px) rotateY(0)' }], half, { easing: 'ease-out' });
+      }
+    } else if (step === 'e') {
+      if (reduceMotion) { if (rare) card.classList.add('rare'); await wait(ms); }
+      else if (rare) {
+        rays.style.display = 'block';
+        play(rays, [{ transform: 'rotate(0)', opacity: 0 }, { opacity: 1, offset: 0.2 }, { transform: `rotate(${30 * ms / 1000}deg)`, opacity: 1 }], ms, { easing: 'linear' });
+        await wait(400);
+        if (!skipped) sfx.rareTail();
+        await wait(ms - 400);
+      } else await wait(ms);
+    } else if (step === 'f') {
+      dim(0.55);
+      const cell = targetCell();
+      stage.style.visibility = '';
+      if (reduceMotion || !cell) {
+        await Promise.all([play(ov, [{ opacity: 1 }, { opacity: 0 }], ms)]);
+      } else {
+        sfx.move();
+        const a = pos.getBoundingClientRect(), b = cell.getBoundingClientRect();
+        const k = b.width / a.width;
+        ov.style.background = 'rgba(0,0,0,0)';
+        ov.style.transition = 'background 0.3s';
+        rays.style.display = 'none';
+        await play(pos, [{ transform: 'none' }, { transform: `translate(${b.left + b.width / 2 - (a.left + a.width / 2)}px, ${b.top + b.height / 2 - (a.top + a.height / 2)}px) scale(${k})` }], ms, { easing: 'ease-in' });
+      }
+    }
   }
-  if (!skipped) {
-    await play(card, [{ transform: 'perspective(600px) rotateY(0)' }, { transform: 'perspective(600px) rotateY(90deg)' }], 200);
-    reveal();
-    await play(card, [{ transform: 'perspective(600px) rotateY(-90deg)' }, { transform: 'perspective(600px) rotateY(0)' }], 200);
-  }
-  if (!skipped) await wait(rare ? 350 : 300);
-  if (!skipped) {
-    // 表の自分の場所へ飛ぶ
-    cell.scrollIntoView({ block: 'nearest' });
-    const a = card.getBoundingClientRect(), b = cell.getBoundingClientRect();
-    const k = b.width / a.width;
-    await play(card, [{ transform: 'none', opacity: 1 }, { transform: `translate(${b.left + b.width / 2 - (a.left + a.width / 2)}px, ${b.top + b.height / 2 - (a.top + a.height / 2)}px) scale(${k})`, opacity: 1 }], 350, { easing: 'ease-in' });
-  }
+  // 飛ばしたときも同じ形に着く。覆いは 300 ms 残し、飛ばした指が下のボタンを押さないようにする
+  const wasSkipped = skipped;
   skipped = true;
-  finish();
-  // 飛ばした指のクリックが下のボタンに届かないよう、少しだけ覆いを残す
+  finish(wasSkipped);
   ov.classList.add('gfx--gone');
+  ov.style.transition = '';
   await new Promise((res) => setTimeout(res, 300));
   ov.remove();
+  // デザインがそろったとき: 札と表の枠を金の光が 1 周し、`hit`（飛ばしたら印だけ）
+  if (G.designDone(glyphs.got, design) && !wasSkipped) {
+    const els = [$('g-grid'), $('g-tabs').querySelector(`[data-d="${design}"]`)].filter(Boolean);
+    for (const el of els) el.classList.add('lap');
+    sfx.hit();
+    await new Promise((res) => setTimeout(res, G.SET_LAP_MS));
+    for (const el of els) el.classList.remove('lap');
+  }
 }
+const later80 = (el) => setTimeout(() => el.classList.remove('flash'), 80);
 
 function renderOdds() {
   const o = G.odds(glyphs.got);
@@ -1221,13 +1344,8 @@ function openZukan() {
   $('z-stats').innerHTML = [
     [L('解いた', 'Solved'), tt.solved], ['★3', tt.three], [L('4 桁', '4 digits'), tt.played], [L('制覇', 'Complete'), tt.full],
   ].map(([k, v]) => `<div class="stat"><b>${v}</b><small>${k}</small></div>`).join('');
-  const isNew = glyphsNew();
-  if (tab === 'glyphs') markGlyphsSeen();
-  for (const b of document.querySelectorAll('.tab')) {
-    b.classList.toggle('on', b.dataset.tab === tab);
-    b.classList.toggle('new', b.dataset.tab === 'glyphs' && isNew && tab !== 'glyphs');
-  }
-  if (tab === 'digits') renderDigitsTab(); else if (tab === 'glyphs') renderGlyphsTab(); else if (numPick) renderNumberDetail(); else renderNumbersTab();
+  for (const b of document.querySelectorAll('.tab')) b.classList.toggle('on', b.dataset.tab === tab);
+  if (tab === 'digits') renderDigitsTab(); else if (numPick) renderNumberDetail(); else renderNumbersTab();
 }
 
 function renderDigitsTab() {
@@ -1270,8 +1388,6 @@ function renderNumberDetail() {
 }
 
 zbody.addEventListener('click', (e) => {
-  if (e.target.closest('#g-draw')) return drawGlyph();
-  if (e.target.closest('#g-odds')) { sfx.tap(); renderOdds(); return openSheet('odds'); }
   if (e.target.closest('#num-back')) { numPick = 0; sfx.tap(); return openZukan(); }
   const num = e.target.closest('button.num');
   if (num) { numPick = Number(num.dataset.t); sfx.tap(); return openZukan(); }
@@ -1282,6 +1398,16 @@ $('tabs').addEventListener('click', (e) => {
   const b = e.target.closest('.tab');
   if (!b) return;
   tab = b.dataset.tab; numPick = 0; sfx.move(); openZukan();
+});
+$('glyphs-back').addEventListener('click', () => { if (drawing) return; sfx.tap(); showHome(); });
+$('g-odds').addEventListener('click', () => { sfx.tap(); renderOdds(); openSheet('odds'); });
+$('s-glyphs').addEventListener('click', (e) => {
+  if (drawing) return;
+  if (e.target.closest('#g-draw')) return drawGlyph();
+  const t = e.target.closest('.gtab');
+  if (t) { sfx.move(); selectDesign(t.dataset.d); return renderGlyphs(); }
+  const c = e.target.closest('button.gcell');
+  if (c) zoomGlyph(c.dataset.g);
 });
 $('zukan-back').addEventListener('click', () => { sfx.tap(); showHome(); });
 

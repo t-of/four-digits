@@ -72,3 +72,22 @@ export function parseGlyphs(d) {
   }
   return { v: 1, got: [], seen: [] };
 }
+
+// 引く演出の段と秒数（ms）。main.js はこの表どおりに流す。仕様 B-4
+// a 入れる / b ためる / c 光る / d 裏返る / e 見せる / f しまう。動きを減らすときは d・e・f だけ（フェード）
+// そろったときの 0.8 秒の光は表に含めない（main.js の SET_LAP_MS）
+export const SET_LAP_MS = 800;
+export function revealPlan(rare, reduced) {
+  if (reduced) return [{ step: 'd', ms: 300 }, { step: 'e', ms: rare ? 1000 : 600 }, { step: 'f', ms: 300 }];
+  return rare
+    ? [{ step: 'a', ms: 300 }, { step: 'b', ms: 700 }, { step: 'c', ms: 700 }, { step: 'd', ms: 500 }, { step: 'e', ms: 1100 }, { step: 'f', ms: 400 }]
+    : [{ step: 'a', ms: 300 }, { step: 'b', ms: 700 }, { step: 'c', ms: 400 }, { step: 'd', ms: 400 }, { step: 'e', ms: 600 }, { step: 'f', ms: 400 }];
+}
+
+// コーナーを開いたときに選ぶデザイン。最後に引いた品のデザイン → そろっていない最初 → 先頭
+export function pickDesign(got, lastId) {
+  const last = lastId && GLYPH_DESIGNS.find((d) => d.id === String(lastId).split(':')[0]);
+  if (last) return last.id;
+  const open = GLYPH_DESIGNS.find((d) => !designDone(got, d.id));
+  return (open || GLYPH_DESIGNS[0]).id;
+}

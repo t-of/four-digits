@@ -75,7 +75,7 @@ const I18n = (() => {
     del1: 'Delete one digit',
     tabDigits: '4 digits',
     tabNumbers: 'Targets',
-    tabGlyphs: 'Glyphs',
+    glyphs: 'Glyphs',
     oddsTitle: "Only ones you don't have",
     odds: 'Odds',
     howTitle: 'How to play',
