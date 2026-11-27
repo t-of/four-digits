@@ -1005,13 +1005,16 @@ const DESIGN_NAME = { neon: L('ネオン', 'Neon'), ink: L('墨', 'Ink'), pixel:
 // 読めたデザインは document に差し込み、symbol が見つかったタイルだけ <use> にする
 const spriteReady = new Set();
 const spriteBox = document.createElement('div');
-spriteBox.hidden = true;
+// display:none だと filter やグラデーションが効かないので、見えない大きさで置く
+spriteBox.style.cssText = 'position:absolute;width:0;height:0;overflow:hidden';
 document.body.appendChild(spriteBox);
-for (const d of G.GLYPH_DESIGNS) {
+for (const d of [...G.GLYPH_DESIGNS, { id: 'back' }]) {
   fetch(`./glyphs/${d.id}.svg`).then((r) => (r.ok ? r.text() : '')).then((t) => {
     if (!t || !/<symbol/.test(t)) return;
     const w = document.createElement('div');
     w.innerHTML = t;
+    // 動きを減らす設定のときは、絵の中の明滅（SMIL）も止める
+    if (reduceMotion) w.querySelectorAll('animate, animateTransform, animateMotion, set').forEach((a) => a.remove());
     spriteBox.appendChild(w);
     spriteReady.add(d.id);
     if (current === 'zukan' && tab === 'glyphs') renderGlyphsTab();
@@ -1038,7 +1041,7 @@ function renderGlyphsTab() {
   const cost = G.drawCost(glyphs.got);
   let html = '';
   if (!done) {
-    html += `<div class="gdraw"><span class="gdraw__tile" aria-hidden="true"></span>`
+    html += `<div class="gdraw"><span class="gdraw__tile" aria-hidden="true"><svg viewBox="0 0 100 100"><use href="#back"/></svg></span>`
       + `<button class="btn btn--primary${coins.n < cost ? ' poor' : ''}" id="g-draw" aria-label="${L('引く（コイン 25）', 'Draw (25 coins)')}">◎${cost}</button>`
       + `<button class="gdraw__odds" id="g-odds" aria-label="${L('確率', 'Odds')}">%</button></div>`;
   }
@@ -1055,17 +1058,88 @@ function renderGlyphsTab() {
   zbody.innerHTML = html;
 }
 
+// 引く演出。品はもう入っている（演出の途中で閉じても失わない）。画面を押すと最後まで飛ばす
+let drawing = false;
 function drawGlyph() {
+  if (drawing) return;
   const r = G.tryDraw(glyphs.got, coins.n, rnd01);
   if (!r.ok) { sfx.nope(); return; }
   // コインを払うのと品を足すのを 1 つの流れで（払えなければ何も起きない）
   if (r.cost > 0 && !coinSpend(r.cost)) { sfx.nope(); return; }
+  drawing = true;
   glyphs.got.push(r.id); saveGlyphs();
   if (r.cost > 0) sfx.pay();
-  if (G.isRare(r.id)) sfx.record(); else sfx.key();
+  playReveal(r.id).then(() => { drawing = false; });
+}
+
+async function playReveal(id) {
+  const rare = G.isRare(id);
+  const design = id.split(':')[0];
   renderGlyphsTab();
-  const cell = zbody.querySelector(`[data-g="${r.id}"]`);
-  if (cell) { cell.scrollIntoView({ block: 'nearest' }); cell.classList.add('fresh'); }
+  const cell = zbody.querySelector(`[data-g="${id}"]`);
+  const set = cell && cell.closest('.gset');
+  const finish = () => {
+    if (cell) { cell.style.visibility = ''; cell.scrollIntoView({ block: 'nearest' }); cell.classList.add('fresh'); }
+    const dt = zbody.querySelector('.gdraw__tile'); if (dt) dt.style.visibility = '';
+    if (G.designDone(glyphs.got, design) && set) { set.classList.add('lap'); sfx.hit(); }
+  };
+  if (reduceMotion || !cell || !cell.animate) { sfx[rare ? 'record' : 'key'](); finish(); return; }
+
+  // 大きく出す伏せたタイル。画面全体を覆い、押されたら飛ばす
+  const size = Math.round(Math.min(innerWidth * 0.6, innerHeight * 0.4, 240));
+  const ov = document.createElement('div');
+  ov.className = 'gfx';
+  ov.style.setProperty('--gfx', `${size}px`);
+  ov.innerHTML = `<div class="gfx__card${rare ? ' rare' : ''}"><div class="gfx__face gfx__back"><svg viewBox="0 0 100 100" aria-hidden="true"><use href="#back"/></svg></div>`
+    + `<div class="gfx__face gfx__front" hidden>${glyphTile(id)}</div>${rare ? '<i class="gfx__slash"></i>' : ''}</div>`;
+  document.body.appendChild(ov);
+  const card = ov.firstChild, back = card.querySelector('.gfx__back'), front = card.querySelector('.gfx__front');
+  const slash = card.querySelector('.gfx__slash');
+  const dt = zbody.querySelector('.gdraw__tile'); if (dt) dt.style.visibility = 'hidden';
+  cell.style.visibility = 'hidden';
+
+  let skipped = false, revealed = false;
+  const live = new Set();
+  const wait = (ms) => new Promise((res) => { const t = setTimeout(res, ms); live.add(() => { clearTimeout(t); res(); }); });
+  const play = (el, kf, ms, opt = {}) => { const a = el.animate(kf, { duration: ms, fill: 'forwards', ...opt }); live.add(() => a.cancel()); return a.finished.catch(() => {}); };
+  const reveal = () => {
+    if (revealed) return; revealed = true;
+    back.hidden = true; front.hidden = false;
+    sfx[rare ? 'record' : 'key']();
+  };
+  const skip = (e) => {
+    if (skipped) return;
+    skipped = true; if (e) e.preventDefault();
+    reveal();
+    for (const f of [...live]) f();
+  };
+  ov.addEventListener('pointerdown', skip);
+
+  await play(card, [{ transform: 'rotate(0)' }, { transform: 'rotate(-4deg)' }, { transform: 'rotate(4deg)' }, { transform: 'rotate(-3deg)' }, { transform: 'rotate(3deg)' }, { transform: 'rotate(0)' }], 250);
+  if (!skipped && rare) {
+    // 裏返る前の金の一閃（ロゴと同じ向き）
+    await play(slash, [{ transform: 'translateX(-130%)', opacity: 1 }, { transform: 'translateX(130%)', opacity: 1 }], 300);
+    slash.style.display = 'none';
+  }
+  if (!skipped) {
+    await play(card, [{ transform: 'perspective(600px) rotateY(0)' }, { transform: 'perspective(600px) rotateY(90deg)' }], 200);
+    reveal();
+    await play(card, [{ transform: 'perspective(600px) rotateY(-90deg)' }, { transform: 'perspective(600px) rotateY(0)' }], 200);
+  }
+  if (!skipped) await wait(rare ? 350 : 300);
+  if (!skipped) {
+    // 表の自分の場所へ飛ぶ
+    cell.scrollIntoView({ block: 'nearest' });
+    const a = card.getBoundingClientRect(), b = cell.getBoundingClientRect();
+    const k = b.width / a.width;
+    await play(card, [{ transform: 'none', opacity: 1 }, { transform: `translate(${b.left + b.width / 2 - (a.left + a.width / 2)}px, ${b.top + b.height / 2 - (a.top + a.height / 2)}px) scale(${k})`, opacity: 1 }], 350, { easing: 'ease-in' });
+  }
+  skipped = true;
+  finish();
+  // 飛ばした指のクリックが下のボタンに届かないよう、少しだけ覆いを残す
+  ov.classList.add('gfx--gone');
+  await new Promise((res) => setTimeout(res, 300));
+  ov.remove();
 }
 
 function renderOdds() {
