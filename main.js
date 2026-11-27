@@ -8,6 +8,7 @@ import * as M from './src/milestones.js';
 import { dailyPuzzle } from './src/daily.js';
 import { createAuto } from './src/auto.js';
 import * as E from './src/edit.js';
+import { TUTS, tutStep, tutOf } from './src/tut.js';
 import { SIZE as TABLE_SIZE, mOf, lvOfByte } from './src/puzzle.js';
 
 // 画面の言葉。L('日本語', 'English') で、起動時に決めた言語のほうを使う（i18n.js）
@@ -129,11 +130,10 @@ function totals() {
 // =====================================================================
 const A = createAuto({ load, save, lvOf, starsOf, hasTable: () => !!minTable });
 const auto = A.state;
-// はじめての人の最初の 1 問は、+ を 1 つ差し込めば解ける問題（20+27=47）。遊び方を読ませずに触って覚える
-const TUT = [2027, 47];
-const needTut = () => !load('tut', false) && totals().played === 0;
+// はじめの 2 問（src/tut.js）。遊び方を読ませずに触って覚える
+const tutNow = () => tutStep(load('tut', false), totals().played);
 function ensureAuto() {
-  if (!auto.cur) { auto.cur = needTut() ? TUT : A.pick(); A.save(); }
+  if (!auto.cur) { const st = tutNow(); auto.cur = st ? [...TUTS[st - 1]] : A.pick(); A.save(); }
   return auto.cur;
 }
 
@@ -477,7 +477,7 @@ function showHome() {
   renderHome();
   renderCoins();
   // はじめての日は最初の 1 問のあと、ホームに戻ったときに渡す
-  const band = !needTut() && claimLogin();
+  const band = !tutNow() && claimLogin();
   // 届いているのに渡していない節目は、ホームでまとめて渡す
   tableReady.then(() => setTimeout(() => {
     if (current !== 'home') return;
@@ -647,7 +647,7 @@ const MAXLEN = 60;
 let digits = '0000';
 let mode = 'free';   // 'free' | 'auto' | 'daily'
 let target = 1, toks = [], cur = 0, solved = false, popAt = -1;
-let tut = false;     // はじめての 1 問の最中（+ キーを光らせ、カーソルを 20|27 に置く）
+let tut = 0;         // はじめの何問目の最中か（1 は + キーを光らせる。カーソルは 20|27 / 14|46 に置く。0 は通常）
 let locked = null;   // 「もっと短く」で戻ったときの式。同じ式のままでは解けた扱いにしない
 let timers = [];
 const later = (fn, ms) => timers.push(setTimeout(fn, ms));
@@ -660,18 +660,20 @@ const canDelete = () => E.canDelete(toks, cur);
 function openPuzzle(t, md = 'free') {
   mode = md;
   target = t;
-  tut = md === 'auto' && digits === pad4(TUT[0]) && t === TUT[1] && needTut();
+  const st = tutNow();
+  tut = md === 'auto' && tutOf(st, Number(digits), t) ? st : 0;
   toks = [...digits]; cur = tut ? 2 : 1; popAt = -1;
   solved = false; locked = null;
   $('p-coin-plus').classList.remove('show');
-  $('key-plus').classList.toggle('hint', tut);
+  $('key-plus').classList.toggle('hint', tut === 1);
+  $('r-retry').classList.remove('hint');
   resetPad();
   show('puzzle');
   $('puzzle-target').textContent = t;
   $('puzzle-tag').innerHTML = md === 'daily' ? L('今日の 1 問', 'Daily puzzle')
     : md === 'auto' ? `${L('おまかせ', 'Auto')} <em>Lv ${auto.L}</em>` : `${L('フリー', 'Free')} <em>${digits}</em>`;
   passReset();
-  $('giveup').hidden = md !== 'auto' || tut;
+  $('giveup').hidden = md !== 'auto' || !!tut;
   $('expr').classList.remove('won');
   showMine();
   update(true);
@@ -776,7 +778,8 @@ function leaveResult() {
 function finish(k) {
   solved = true;
   if (locked === null) adDue = Rewards.recordSolve().due;   // 「もっと短く」の解き直しは数えない
-  if (tut) { tut = false; save('tut', true); $('key-plus').classList.remove('hint'); }
+  const tutDone = tut;
+  if (tut) { save('tut', tut); tut = 0; $('key-plus').classList.remove('hint'); }
   const m = minOf(digits, target);
   const got = starsFor(k, m);
   const before = starsOf(digits, target);   // saveBest で上書きされる前の星（初めての ★3 の判定）
@@ -802,6 +805,7 @@ function finish(k) {
   rs.textContent = sub;
   rs.classList.toggle('record', record);
   $('r-retry').hidden = got >= 3;
+  $('r-retry').classList.toggle('hint', tutDone === 2 && got < 3);   // 2 問目は「もっと短く」を光らせる
   // コインは 1 行の合計。節目に届いたときだけ、同じ行に金の札（小さな名前＋大きな数）を並べる
   const total = reward + mgain;
   const rc = $('r-coin');
@@ -1024,6 +1028,7 @@ $('r-next').addEventListener('click', () => {
 $('r-retry').addEventListener('click', () => {
   sfx.tap();
   locked = text(); solved = false;
+  $('r-retry').classList.remove('hint');
   resetPad();
   $('expr').classList.remove('won');
   update(true);
@@ -1162,7 +1167,7 @@ let gsel = G.GLYPH_DESIGNS[0].id, lastGlyph = null;
 // 演出中は、引いた品をまだ影のまま見せる（しまう段で入れる）
 let pending = null;
 const gotView = () => (pending ? glyphs.got.filter((id) => id !== pending) : glyphs.got);
-const glyphsDot = () => glyphsNew() || (!G.allDone(glyphs.got) && G.drawCost(glyphs.got) === 0);
+const glyphsDot = () => !tutNow() && (glyphsNew() || (!G.allDone(glyphs.got) && G.drawCost(glyphs.got) === 0));
 const designCount = (got, d) => G.GLYPH_CHARS.filter((c) => G.ownedSet(got).has(`${d}:${c}`)).length;
 
 function renderGlyphs() {
@@ -1532,4 +1537,5 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
-showHome();
+// はじめの 2 問が済むまでは、ホームを通さずはじめの問題へ
+if (tutNow()) { screens.home.hidden = true; tableReady.then(openAuto); } else showHome();

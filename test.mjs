@@ -463,3 +463,23 @@ test('通知: 提供元がなければボタンもベルも出ない', () => {
     assert.equal(Rw.available(), false);
   });
 }
+
+// ---- はじめの 2 問 ----
+import { tutStep, TUTS } from './src/tut.js';
+import { analyze as an2 } from './src/expr.js';
+test('tutStep: 新しい人は 1 → 2、今の人・済みは 0', () => {
+  assert.equal(tutStep(null, 0), 1);
+  assert.equal(tutStep(1, 1), 2);
+  assert.equal(tutStep(1, 7), 2);
+  assert.equal(tutStep(true, 0), 0);
+  assert.equal(tutStep(2, 3), 0);
+  assert.equal(tutStep(null, 5), 0);
+});
+test('2 問目 1446 → 24: 段 0・m = 1、素直な式は 2 つ、最短は 1 つ', () => {
+  assert.deepEqual(TUTS[1], [1446, 24]);
+  const b = tbl[1446 * 100 + 23];
+  assert.equal(mOf(b), 1);
+  assert.equal((b >> 5) & 3, 0);
+  const a = an2('14+4+6', '1446'); assert.equal(a.status, 'ok'); assert.equal(Number(a.value.n / a.value.d), 24); assert.equal(a.symbols, 2);
+  const c = an2('144÷6', '1446'); assert.equal(c.status, 'ok'); assert.equal(Number(c.value.n / c.value.d), 24); assert.equal(c.symbols, 1);
+});
